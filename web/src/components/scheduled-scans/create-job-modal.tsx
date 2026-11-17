@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { CalendarPlus, Loader2, Sparkles, X } from "lucide-react";
-import type { ScanEngine } from "@/lib/scheduled-jobs";
+import type { ScanEngine, ScheduledJob } from "@/lib/scheduled-jobs";
 import { DEFAULT_FILTERS, type ExploreFilters } from "@/lib/explore";
 import { FilterBuilder } from "@/components/explore/filter-builder";
 import { Modal } from "@/components/ui/modal";
@@ -13,21 +13,28 @@ export function CreateJobModal({
   isOpen,
   onClose,
   onCreated,
+  template = null,
 }: {
   isOpen: boolean;
   onClose: () => void;
   onCreated: () => void;
+  /** A saved scan to copy. The form opens filled with its settings and saves as a NEW scan. */
+  template?: ScheduledJob | null;
 }) {
-  const [name, setName] = useState("Scheduled scan");
-  const [engine, setEngine] = useState<ScanEngine>("full");
-  const [every, setEvery] = useState(6);
-  const [unit, setUnit] = useState<"minutes" | "hours" | "days">("hours");
-  const [filters, setFilters] = useState<ExploreFilters>({
-    ...DEFAULT_FILTERS,
-    ats: [...DEFAULT_FILTERS.ats],
-    positive: [],
-    negative: [],
-  });
+  const [name, setName] = useState(template ? `${template.name} (copy)`.slice(0, 80) : "Scheduled scan");
+  const [engine, setEngine] = useState<ScanEngine>(template?.engine ?? "full");
+  const [every, setEvery] = useState(template?.every ?? 6);
+  const [unit, setUnit] = useState<"minutes" | "hours" | "days">(template?.unit ?? "hours");
+  const [filters, setFilters] = useState<ExploreFilters>(
+    template
+      ? (JSON.parse(JSON.stringify(template.filters)) as ExploreFilters)
+      : {
+          ...DEFAULT_FILTERS,
+          ats: [...DEFAULT_FILTERS.ats],
+          positive: [],
+          negative: [],
+        },
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const nameRef = useRef<HTMLInputElement>(null);
@@ -59,8 +66,8 @@ export function CreateJobModal({
               <CalendarPlus className="size-5" />
             </div>
             <div>
-              <h2 id="create-scheduled-scan-title" className="text-lg font-semibold text-foreground">Create Scheduled Scan</h2>
-              <p className="text-xs text-muted">Choose which boards to check, and how often.</p>
+              <h2 id="create-scheduled-scan-title" className="text-lg font-semibold text-foreground">{template ? "Copy Scheduled Scan" : "Create Scheduled Scan"}</h2>
+              <p className="text-xs text-muted">{template ? "Change what you need, then save it as a new scan. The original stays as it is." : "Choose which boards to check, and how often."}</p>
             </div>
           </div>
           <button

@@ -21,6 +21,29 @@ function planLabel(label: string): string {
 // this brake signal to their plan keep their own ceilings.
 const DEFAULT_BUDGET = { w5: 140_000_000, w7: 1_000_000_000 };
 
+// One request shared by every meter on the page (the desktop sidebar and the mobile
+// nav each mount one), reused for 30 seconds. Before this, one page load asked the
+// server four times for a figure that costs a scan of all Claude Code logs.
+let usageInFlight: Promise<Usage | null> | null = null;
+let usageLast: Usage | null = null;
+let usageAt = 0;
+function fetchUsage(): Promise<Usage | null> {
+  if (usageInFlight) return usageInFlight;
+  if (usageLast && Date.now() - usageAt < 30_000) return Promise.resolve(usageLast);
+  usageInFlight = fetch("/api/usage")
+    .then((r) => r.json() as Promise<Usage>)
+    .then((d) => {
+      usageLast = d;
+      usageAt = Date.now();
+      return d;
+    })
+    .catch(() => usageLast)
+    .finally(() => {
+      usageInFlight = null;
+    });
+  return usageInFlight;
+}
+
 function fmt(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
   if (n >= 1_000) return `${Math.round(n / 1_000)}k`;
@@ -51,16 +74,16 @@ export function UsageMeter() {
   useEffect(() => {
     let alive = true;
     const load = () =>
-      fetch("/api/usage")
-        .then((r) => r.json())
-        .then((d) => {
-          if (alive) setData(d);
-        })
-        .catch(() => {});
-    load();
+      fetchUsage().then((d) => {
+        if (alive && d) setData(d);
+      });
+    // The endpoint reads every Claude Code log on disk, so let the page's own data
+    // arrive first instead of racing it for the browser's few connections.
+    const first = setTimeout(load, 2500);
     const id = setInterval(load, 60_000);
     return () => {
       alive = false;
+      clearTimeout(first);
       clearInterval(id);
     };
   }, []);

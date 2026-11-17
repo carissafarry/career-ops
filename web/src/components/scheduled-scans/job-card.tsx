@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, CheckCircle2, Clock, Edit3, Globe, Loader2, MoreVertical, Pause, Play, Trash2, Zap } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, Copy, Edit3, Globe, Loader2, MoreVertical, Pause, Play, Trash2, Zap } from "lucide-react";
 import type { ScheduledJob } from "@/lib/scheduled-jobs";
 import { scanEngineLabel, scheduleCadenceLabel } from "@/lib/schedule-label.mjs";
 import { cn } from "@/lib/cn";
@@ -10,12 +10,14 @@ export function JobCard({
   job,
   onToggleStatus,
   onEdit,
+  onCopy,
   onDelete,
   onRunFinished,
 }: {
   job: ScheduledJob;
   onToggleStatus: (id: string, currentStatus: string) => void;
   onEdit: (job: ScheduledJob) => void;
+  onCopy: (job: ScheduledJob) => void;
   onDelete: (id: string) => void;
   onRunFinished: () => void;
 }) {
@@ -110,6 +112,17 @@ export function JobCard({
                   className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-brand-soft hover:text-brand-text"
                 >
                   <Edit3 className="size-3.5" /> Edit Scan
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onCopy(job);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-brand-soft hover:text-brand-text"
+                >
+                  <Copy className="size-3.5" /> Copy Scan
                 </button>
                 <button
                   type="button"

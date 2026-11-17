@@ -56,6 +56,9 @@ export function ScheduledJobsView() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<ScheduledJob | null>(null);
+  // A scan being copied, and a counter so each Copy opens a freshly filled form.
+  const [copySource, setCopySource] = useState<ScheduledJob | null>(null);
+  const [createFormKey, setCreateFormKey] = useState(0);
   const [osRunning, setOsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,6 +101,13 @@ export function ScheduledJobsView() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not update scheduled scan.");
     }
+  };
+
+  // A new scan starts from a blank form, not from the last copy that was opened.
+  const openNewScan = () => {
+    setCopySource(null);
+    setCreateFormKey((k) => k + 1);
+    setCreateModalOpen(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -173,7 +183,7 @@ export function ScheduledJobsView() {
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
-            onClick={() => setCreateModalOpen(true)}
+            onClick={openNewScan}
             className="inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-medium text-brand-foreground transition-colors hover:bg-brand-200"
           >
             <CalendarPlus className="size-4" />
@@ -309,7 +319,7 @@ export function ScheduledJobsView() {
           <p className="mt-1 text-xs text-muted">{EMPTY_SCHEDULES_HINT}</p>
           <button
             type="button"
-            onClick={() => setCreateModalOpen(true)}
+            onClick={openNewScan}
             className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-xs font-medium text-brand-foreground transition-colors hover:bg-brand-200"
           >
             <CalendarPlus className="size-3.5" /> New scheduled scan
@@ -323,6 +333,11 @@ export function ScheduledJobsView() {
               job={job}
               onToggleStatus={handleToggleStatus}
               onEdit={(j) => setEditingJob(j)}
+              onCopy={(j) => {
+                setCopySource(j);
+                setCreateFormKey((k) => k + 1);
+                setCreateModalOpen(true);
+              }}
               onDelete={handleDelete}
               onRunFinished={loadData}
             />
@@ -332,8 +347,13 @@ export function ScheduledJobsView() {
 
       {/* Create Modal, Edit Modal & History Drawer */}
       <CreateJobModal
+        key={createFormKey}
         isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
+        template={copySource}
+        onClose={() => {
+          setCreateModalOpen(false);
+          setCopySource(null);
+        }}
         onCreated={loadData}
       />
 
