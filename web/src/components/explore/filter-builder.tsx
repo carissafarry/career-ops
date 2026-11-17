@@ -98,8 +98,8 @@ function KeywordField({
 function Label({ children, hint }: { children: React.ReactNode; hint?: string }) {
   return (
     <div className="mb-1.5 flex items-baseline justify-between gap-4">
-      <span className="text-[13px] font-medium text-foreground">{children}</span>
-      {hint && <span className="ml-4 text-right text-[11px] text-faint">{hint}</span>}
+      <span className="text-[14px] font-medium text-foreground">{children}</span>
+      {hint && <span className="ml-4 text-right text-xs text-faint">{hint}</span>}
     </div>
   );
 }
@@ -128,14 +128,14 @@ export function FilterBuilder({
     <fieldset disabled={disabled} className="space-y-4">
       <style>{STYLE}</style>
       <fieldset>
-        <legend className="mb-1.5 text-[13px] font-medium">Discovery sources</legend>
+        <legend className="mb-1.5 text-[14px] font-medium">Discovery sources</legend>
         <div className="flex flex-wrap gap-4 text-sm">
           <label className="inline-flex items-center gap-2"><input type="radio" name="explore-preset" checked={!employer} onChange={() => set({ preset: undefined })} />Public ATS network</label>
           <label className="inline-flex items-center gap-2"><input type="radio" name="explore-preset" checked={employer} onChange={() => set({ preset: CHINA_PRESET, employers: [...CHINA_SOURCES] as EmployerSource[] })} />China employer preset</label>
         </div>
       </fieldset>
       {employer && <fieldset aria-describedby="employer-scope employer-selection">
-        <legend className="mb-2 text-[13px] font-medium">Employers</legend>
+        <legend className="mb-2 text-[14px] font-medium">Employers</legend>
         <div className="flex flex-wrap gap-4">{CHINA_SOURCES.map(id => <label key={id} className="inline-flex items-center gap-2 text-sm">
           <input type="checkbox" checked={filters.employers?.includes(id as EmployerSource) ?? false} onChange={e => set({ employers: e.target.checked ? [...(filters.employers ?? []), id as EmployerSource] : (filters.employers ?? []).filter(x => x !== id) })} />{EMPLOYER_LABEL[id as keyof typeof EMPLOYER_LABEL]}
         </label>)}</div>
@@ -147,7 +147,7 @@ export function FilterBuilder({
         <Label hint={filters.positive.length === 0 ? (employer ? "empty = all titles" : "empty = every fresh posting") : undefined}>Roles to find</Label>
         <KeywordField ariaLabel="Roles to find" values={filters.positive} tone="inc" placeholder="AI platform, ML infrastructure, staff engineer…" onChange={(v) => set({ positive: v })} />
         {!employer && seededFrom.length > 0 && filters.positive.length > 0 && (
-          <p className="mt-1 text-[11px] text-faint">Seeded from your {seededFrom.join(" + ")} — edit freely.</p>
+          <p className="mt-1 text-xs text-faint">Seeded from your {seededFrom.join(" + ")} — edit freely.</p>
         )}
       </div>
 
@@ -178,7 +178,7 @@ export function FilterBuilder({
               <Clock className="size-3.5 text-muted" /> Posted within
             </span>
           </Label>
-          <div className="inline-flex rounded-lg border border-border bg-surface/40 p-0.5">
+          <div className="inline-flex rounded-lg border border-border bg-surface p-0.5">
             {RECENCY.map((r) => (
               <button
                 key={r.days}
@@ -221,7 +221,7 @@ export function FilterBuilder({
       {!employer && <button
         type="button"
         onClick={() => setAdvanced((v) => !v)}
-        className="inline-flex items-center gap-1.5 text-[12px] text-muted hover:text-foreground transition-colors max-sm:min-h-[44px]"
+        className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-foreground transition-colors max-sm:min-h-[44px]"
       >
         <SlidersHorizontal className="size-3.5" />
         More location controls &amp; scan depth
@@ -229,7 +229,7 @@ export function FilterBuilder({
       </button>}
 
       {!employer && advanced && (
-        <div className="space-y-3 rounded-xl border border-border bg-surface/30 p-3">
+        <div className="space-y-3 rounded-xl border border-border bg-surface shadow-card p-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label hint="rescues a multi-location posting">Always include</Label>

@@ -40,7 +40,7 @@ export function PipelineSankey({
 
   return (
     <section id="pipeline-sankey" className="mt-10 scroll-mt-8" aria-labelledby="sankey-heading">
-      <h2 id="sankey-heading" className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
+      <h2 id="sankey-heading" className="text-xs font-semibold tracking-[0.01em] text-muted">
         Pipeline Sankey
       </h2>
       <p className="mt-2 max-w-2xl text-sm text-muted">
@@ -48,7 +48,7 @@ export function PipelineSankey({
         on the interview path — a later Rejected does not erase the stage.
       </p>
 
-      <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-surface/50 p-3">
+      <div className="mt-4 overflow-x-auto rounded-xl border border-border bg-surface shadow-card p-3">
         <svg
           viewBox={`0 0 ${layout.width} ${layout.height}`}
           className="h-auto w-full min-w-[720px]"
@@ -95,7 +95,7 @@ export function PipelineSankey({
                   y={node.y + node.height / 2}
                   textAnchor={anchor}
                   dominantBaseline="middle"
-                  className="fill-foreground text-[11px] font-medium"
+                  className="fill-foreground text-xs font-medium"
                   stroke="var(--bg)"
                   strokeWidth={4}
                   paintOrder="stroke"

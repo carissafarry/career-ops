@@ -76,7 +76,7 @@ export function OnboardingProgress({ compact = false }: { compact?: boolean }) {
   const visibleSections = panel.mode === "link" ? sections.filter((s) => s.state !== "filled") : sections;
 
   return (
-    <aside className={`rounded-2xl border border-border bg-surface/40 ${compact ? "p-4" : "p-5"}`} aria-label="Setup progress">
+    <aside className={`rounded-2xl border border-border bg-surface shadow-card ${compact ? "p-4" : "p-5"}`} aria-label="Setup progress">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-sm font-medium text-foreground">
           {panel.mode === "link" ? "Optional profile details" : "Your profile, as it takes shape"}
@@ -100,7 +100,7 @@ export function OnboardingProgress({ compact = false }: { compact?: boolean }) {
           <Row key={p.key} state={missing.has(p.key) ? "missing" : "filled"} label={p.label} />
         ))}
         {showSections && panel.mode === "checklist" && (
-          <li className="pt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-faint">personalization — what evaluations score against</li>
+          <li className="pt-2 font-mono text-xs tracking-[0.01em] text-faint">personalization — what evaluations score against</li>
         )}
         {showSections && visibleSections.map((s) => (
           <Row key={s.id} state={s.state} label={s.heading.replace(/^## Your /, "")} />
@@ -132,7 +132,7 @@ function Row({ state, label }: { state: "filled" | "template" | "missing"; label
     <li className={`flex items-center gap-2 ${tone}`}>
       <Icon className={`size-3.5 shrink-0 ${state === "filled" ? "text-brand-text" : "text-faint"}`} aria-hidden />
       <span className="truncate">{label}</span>
-      {hint && <span className="ml-auto shrink-0 text-[11px] text-faint">{hint}</span>}
+      {hint && <span className="ml-auto shrink-0 text-xs text-faint">{hint}</span>}
     </li>
   );
 }

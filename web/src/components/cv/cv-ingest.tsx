@@ -8,7 +8,6 @@ import remarkGfm from "remark-gfm";
 import { noMarkdownImages } from "@/lib/markdown-options.mjs";
 import { Upload, FileText, Loader2, Check, AlertTriangle, Lock, ArrowRight, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { instrumentSerif } from "@/lib/fonts";
 import { cvStreamErrorMessage, parseCvStream, type CvSeed } from "@/lib/cv/quality";
 import { cvReadiness } from "@/lib/cv/readiness.mjs";
 import { ingestErrorMessage } from "@/lib/cv/ingest-error.mjs";
@@ -301,7 +300,7 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface/50 px-3 py-1.5 text-xs font-medium text-foreground transition hover:border-brand/40 hover:text-brand-text max-sm:min-h-[44px] max-sm:px-4"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground transition hover:border-brand/40 hover:text-brand-text max-sm:min-h-[44px] max-sm:px-4"
             >
               <Upload className="size-3.5" /> Choose file
             </button>
@@ -310,7 +309,7 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
               e.target.value = "";
               if (file) ingestFile(file);
             }} />
-            <span className="inline-flex items-center gap-1 text-[11px] text-faint">
+            <span className="inline-flex items-center gap-1 text-xs text-faint">
               <Lock className="size-3" /> Converted with your configured AI CLI.
             </span>
             <button
@@ -325,7 +324,7 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
         </div>
         {phase === "error" &&
           (err === "needs-cli" ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-[13px] text-amber-800 dark:text-amber-300">
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-[14px] text-amber-800 dark:text-amber-300">
               <AlertTriangle className="size-3.5 shrink-0" />
               <span>To convert a PDF, TeX or Word file, connect an AI CLI in Config. Paste or drop .md / .txt to start without one.</span>
               <Link href="/config" className="ml-auto inline-flex items-center gap-1 rounded-md bg-amber-500/20 px-2.5 py-1 font-medium text-amber-800 transition hover:bg-amber-500/30 dark:text-amber-200">
@@ -333,7 +332,7 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
               </Link>
             </div>
           ) : (
-            <p role="alert" className="flex items-center gap-1.5 text-[13px] text-amber-800 dark:text-amber-400">
+            <p role="alert" className="flex items-center gap-1.5 text-[14px] text-amber-800 dark:text-amber-400">
               <AlertTriangle className="size-3.5 shrink-0" /> {err}
             </p>
           ))}
@@ -370,17 +369,17 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
   // ── PARSING (the 10s bridge) ──
   if (phase === "parsing") {
     return (
-      <div className="rounded-2xl border border-border bg-surface/60 p-6 backdrop-blur-sm">
+      <div className="rounded-2xl border border-border bg-surface shadow-card p-6 backdrop-blur-sm">
         <style>{STYLE}</style>
         {waitingForBase && baseFailed ? (
           <div className="space-y-3">
-            <p className="flex items-center gap-1.5 text-[13px] text-amber-800 dark:text-amber-400">
+            <p className="flex items-center gap-1.5 text-[14px] text-amber-800 dark:text-amber-400">
               <AlertTriangle className="size-3.5 shrink-0" /> The current CV could not be read. Load it again before review.
             </p>
             <button
               type="button"
               onClick={() => void acceptCurrentFile()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface/50 px-3 py-1.5 text-xs font-medium text-foreground transition hover:border-brand/40"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground transition hover:border-brand/40"
             >
               Load the current CV
             </button>
@@ -389,10 +388,10 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
           <>
             <div className="flex items-center gap-2.5">
               <Loader2 className="size-4 animate-spin text-brand-text" />
-              <span className={`${instrumentSerif.className} text-lg text-foreground`}>{trace || "Reading your CV…"}</span>
+              <span className={`font-display text-lg text-foreground`}>{trace || "Reading your CV…"}</span>
             </div>
             <p className="mt-3 text-xs text-muted">Converting to Markdown with your configured AI CLI…</p>
-            {md && <div className="co-cvtrace mt-4 max-h-40 overflow-hidden rounded-lg border border-border bg-surface/40 p-3 text-[11px] text-faint">{md.slice(0, 400)}…</div>}
+            {md && <div className="co-cvtrace mt-4 max-h-40 overflow-hidden rounded-lg border border-border bg-surface p-3 text-xs text-faint">{md.slice(0, 400)}…</div>}
           </>
         )}
       </div>
@@ -401,15 +400,15 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
 
   // ── REVIEW (propose → confirm) ──
   return (
-    <div className="rounded-2xl border border-border bg-surface/60 p-4 backdrop-blur-sm md:p-5">
+    <div className="rounded-2xl border border-border bg-surface shadow-card p-4 backdrop-blur-sm md:p-5">
       <style>{STYLE}</style>
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <FileText className="size-4 text-brand-text" />
-        <h3 className={`${instrumentSerif.className} text-lg text-foreground`}>Here&apos;s your CV — review and save</h3>
+        <h3 className={`font-display text-lg text-foreground`}>Here&apos;s your CV — review and save</h3>
         {readiness && (
           <span
             className={cn(
-              "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
+              "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
               readiness.scoreable ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-400" : "bg-amber-500/10 text-amber-800 dark:text-amber-400",
             )}
           >
@@ -418,17 +417,17 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
           </span>
         )}
       </div>
-      {readiness?.hint && <p className="mb-2 text-[12px] text-amber-800 dark:text-amber-400">{readiness.hint}</p>}
+      {readiness?.hint && <p className="mb-2 text-xs text-amber-800 dark:text-amber-400">{readiness.hint}</p>}
       {saveErr && (
         <div className="mb-2 space-y-2">
-          <p role="alert" className="flex items-center gap-1.5 text-[12px] text-red-500">
+          <p role="alert" className="flex items-center gap-1.5 text-xs text-red-500">
             <AlertTriangle className="size-3.5 shrink-0" /> {saveErr}
           </p>
           {(conflict || !baseReady) && (
             <button
               type="button"
               onClick={() => void acceptCurrentFile()}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface/50 px-3 py-1.5 text-xs font-medium text-foreground transition hover:border-brand/40"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-medium text-foreground transition hover:border-brand/40"
             >
               Use the CV file as it is now
             </button>
@@ -441,9 +440,9 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
           value={md}
           disabled={phase === "saving"}
           onChange={(e) => setMd(e.target.value)}
-          className="h-72 w-full resize-none rounded-lg border border-border bg-surface/40 p-3 font-mono text-[12px] leading-relaxed outline-none focus:border-brand/40"
+          className="h-72 w-full resize-none rounded-lg border border-border bg-surface p-3 font-mono text-xs leading-relaxed outline-none focus:border-brand/40"
         />
-        <div className="prose prose-sm dark:prose-invert h-72 max-w-none [&_p]:whitespace-pre-line overflow-y-auto rounded-lg border border-border bg-surface/40 p-3 text-[13px]">
+        <div className="prose prose-sm dark:prose-invert h-72 max-w-none [&_p]:whitespace-pre-line overflow-y-auto rounded-lg border border-border bg-surface p-3 text-[14px]">
           <ReactMarkdown remarkPlugins={[remarkGfm]} {...noMarkdownImages}>{md}</ReactMarkdown>
         </div>
       </div>
@@ -461,11 +460,11 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
           type="button"
           disabled={phase === "saving"}
           onClick={startOver}
-          className="inline-flex items-center gap-1.5 text-[13px] text-muted transition hover:text-foreground"
+          className="inline-flex items-center gap-1.5 text-[14px] text-muted transition hover:text-foreground"
         >
           <RotateCcw className="size-3.5" /> Start over
         </button>
-        <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-faint">
+        <span className="ml-auto inline-flex items-center gap-1 text-xs text-faint">
           <Lock className="size-3" /> {variant === "editor" ? "Save updates cv.md and backs up the previous version" : "Nothing is saved until you click Save."}
         </span>
       </div>

@@ -283,7 +283,7 @@ export function FollowupsView() {
       ) : (
         <div className="mt-4 overflow-x-auto rounded-2xl border border-border">
           <table className="w-full min-w-[880px] text-sm">
-            <thead className="bg-surface/60 text-left text-xs uppercase tracking-wide text-faint">
+            <thead className="bg-surface/60 text-left text-xs tracking-[0.01em] text-faint">
               <tr>
                 <th className="w-8 px-2 py-2.5"><span className="sr-only">Expand</span></th>
                 {COLUMNS.map((c) => {
@@ -292,7 +292,7 @@ export function FollowupsView() {
                     <th key={c.key} aria-sort={active ? (dir === 1 ? "ascending" : "descending") : "none"} className="px-2.5 py-2.5 font-medium">
                       <button
                         type="button"
-                        className="inline-flex cursor-pointer select-none items-center gap-1 uppercase tracking-wide hover:text-foreground"
+                        className="inline-flex cursor-pointer select-none items-center gap-1 tracking-[0.01em] hover:text-foreground"
                         onClick={() =>
                           // First click on Urgency descends (most pressing first —
                           // how ▼ reads); other columns start ascending.
@@ -332,7 +332,7 @@ export function FollowupsView() {
 
       {data?.available && upcoming.length > 0 && (
         <section className="mt-8">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-muted">Upcoming</h2>
+          <h2 className="text-sm font-semibold tracking-[0.01em] text-muted">Upcoming</h2>
           <p className="mt-1 text-xs text-faint">These have a next date and are not due yet.</p>
           <ul className="mt-3 divide-y divide-border rounded-2xl border border-border">
             {upcoming.map((entry) => (

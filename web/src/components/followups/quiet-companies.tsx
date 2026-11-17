@@ -53,7 +53,7 @@ export function QuietCompanies() {
 
   if (model.companies.length === 0) {
     return (
-      <section className="mt-8 rounded-2xl border border-border bg-surface/30 px-5 py-4">
+      <section className="mt-8 rounded-2xl border border-border bg-surface shadow-card px-5 py-4">
         <Header courtesyDays={model.courtesyDays} />
         <p className="mt-2 text-sm text-muted">
           Nothing has gone quiet past the threshold{model.checked > 0 ? ` across ${model.checked} compan${model.checked === 1 ? "y" : "ies"}` : ""}.
@@ -68,7 +68,7 @@ export function QuietCompanies() {
   }
 
   return (
-    <section className="mt-8 rounded-2xl border border-border bg-surface/40 px-5 py-4">
+    <section className="mt-8 rounded-2xl border border-border bg-surface shadow-card px-5 py-4">
       <Header courtesyDays={model.courtesyDays} />
 
       <div className="mt-3 grid gap-2.5">
@@ -134,7 +134,7 @@ function Row({ c }: { c: QuietCompany }) {
   };
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border bg-surface/40 px-3.5 py-2.5">
+    <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border bg-surface shadow-card px-3.5 py-2.5">
       <div className="min-w-0 flex-[1_1_60%]">
         <p className="truncate text-sm">
           <span className="font-medium text-foreground">{c.company}</span>
@@ -162,7 +162,7 @@ function Row({ c }: { c: QuietCompany }) {
       {fallback && (
         <div className="w-full">
           <p className="text-xs text-muted">Couldn&apos;t reach the clipboard — select and copy:</p>
-          <code className="mt-1 block w-full select-all overflow-x-auto rounded-lg border border-border bg-surface px-2.5 py-1.5 text-[11px] text-foreground">
+          <code className="mt-1 block w-full select-all overflow-x-auto rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs text-foreground">
             {fallback}
           </code>
         </div>

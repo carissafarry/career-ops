@@ -17,7 +17,6 @@ import { FirstScoreView } from "@/components/explore/first-score-view";
 import { BetaBanner } from "@/components/beta/beta-banner";
 import { WorkerPills } from "@/components/jobs/worker-pills";
 import { UsageMeter } from "@/components/usage-meter";
-import { instrumentSerif } from "@/lib/fonts";
 import { visibleNavItems, isActivePath } from "@/lib/nav-items";
 
 export function AppShell({ children, followupsEnabled }: { children: React.ReactNode; followupsEnabled: boolean }) {
@@ -35,11 +34,11 @@ export function AppShell({ children, followupsEnabled }: { children: React.React
       </a>
       <MobileNav followupsEnabled={followupsEnabled} />
       <div className="flex min-h-screen">
-        <aside className="sticky top-0 hidden print:hidden h-screen w-60 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface/30 p-4 md:flex">
-          <Link href="/" className="mb-8 flex items-center gap-2.5 px-1">
-            <CoMark size={32} />
-            <span className={`${instrumentSerif.className} relative -top-px text-2xl font-normal tracking-tight text-landing`}>
-              career-ops
+        <aside className="sticky top-0 z-10 hidden print:hidden h-screen w-64 shrink-0 flex-col overflow-y-auto border-r border-border bg-surface px-4 py-6 [scrollbar-width:thin] md:flex">
+          <Link href="/" className="mb-6 flex items-center gap-3 px-2">
+            <CoMark size={38} />
+            <span className="text-[1.375rem] font-extrabold leading-none tracking-[-0.03em] text-landing">
+              career-ops<span className="text-brand-text">.</span>
             </span>
           </Link>
           <CommandPalette followupsEnabled={followupsEnabled} />
@@ -50,17 +49,18 @@ export function AppShell({ children, followupsEnabled }: { children: React.React
                 <Link
                   key={href}
                   href={href}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                    "flex items-center gap-3 rounded-xl px-4 py-2 text-[0.9375rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50",
                     active
-                      ? "bg-brand-soft text-brand-text"
+                      ? "bg-brand-soft font-semibold text-brand-text"
                       : "text-muted hover:bg-surface-hover hover:text-foreground",
                   )}
                 >
-                  <Icon className="size-4" />
+                  <Icon className="size-[18px]" />
                   {label}
                   {chip && (
-                    <span className="ml-auto rounded-full border border-brand/30 bg-brand-soft px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-text">
+                    <span className="ml-auto rounded-full bg-brand-soft px-2 py-0.5 text-[12px] font-semibold capitalize tracking-[0.01em] text-brand-text">
                       {chip}
                     </span>
                   )}

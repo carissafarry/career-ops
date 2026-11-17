@@ -19,7 +19,7 @@ export default function ExploreLoading() {
         </div>
       </header>
 
-      <div className="mb-6 rounded-2xl border border-border bg-surface/30 p-5">
+      <div className="mb-6 rounded-2xl border border-border bg-surface shadow-card p-5">
         <div className="space-y-4">
           <div>
             <Skeleton className="mb-2 h-4 w-28" />

@@ -154,7 +154,7 @@ export function TemplatesSection({ kind = "cv" }: { kind?: "cv" | "cover" }) {
       ) : (
         <ul className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4">
           {templates.map((t) => (
-            <li key={t.name} className="rounded-xl border border-border bg-surface/40 p-3">
+            <li key={t.name} className="rounded-xl border border-border bg-surface shadow-card p-3">
               <Thumb key={`${t.name}-${rev}`} kind={kind} name={t.name} title={`${t.displayName} preview`} />
               <div className="mt-2 flex items-center justify-between gap-2">
                 <span className="truncate text-sm font-medium">{t.displayName}</span>

@@ -25,7 +25,7 @@ export default function ReportError({
       >
         <ArrowLeft className="size-4" /> Pipeline
       </Link>
-      <div className="mt-8 flex gap-3 rounded-2xl border border-border bg-surface/30 p-5">
+      <div className="mt-8 flex gap-3 rounded-2xl border border-border bg-surface shadow-card p-5">
         <FileWarning className="mt-1 size-5 shrink-0 text-faint" />
         <div>
           <h1 className="font-display text-2xl tracking-tight text-landing">Report #{id} could not be read</h1>

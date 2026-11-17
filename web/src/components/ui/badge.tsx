@@ -1,6 +1,6 @@
 import { cn } from "@/lib/cn";
 
-// Score / status pill. No brand tone — orange is reserved for "active/selected"
+// Score / status pill. No brand tone — violet is reserved for "active/selected"
 // (active tab, nav, focus ring), never for a score. Grades route through the
 // good/warn/bad scale so the table stays legible.
 export function Badge({
@@ -17,10 +17,11 @@ export function Badge({
     info: "bg-sky-500/15 text-sky-700 dark:text-sky-400",
     muted: "bg-surface-hover text-muted",
   } as const;
+  // Pastel pills, as in the reference: rounded-full, 13px, semibold.
   return (
     <span
       className={cn(
-        "inline-block rounded-md px-1.5 py-0.5 text-xs font-semibold tabular-nums",
+        "inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums",
         tones[tone],
         className,
       )}

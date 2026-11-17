@@ -130,10 +130,10 @@ export function CadenceSettings() {
 
   return (
     <div>
-      <label className="mt-8 mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+      <label className="mt-8 mb-2 block text-xs font-semibold tracking-[0.01em] text-muted">
         Follow-up cadence
       </label>
-      <div className="rounded-xl border border-border bg-surface/50 p-4">
+      <div className="rounded-xl border border-border bg-surface shadow-card p-4">
         <p className="text-xs leading-relaxed text-faint">
           When the <span className="text-muted">Follow-ups</span> tracker nudges you. Saved to{" "}
           <span className="font-mono text-muted">config/profile.yml</span> — the CLI uses the same values.

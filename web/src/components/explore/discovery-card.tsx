@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { ExternalLink, Plus, Check, Loader2, ShieldQuestion, Sparkles, Coins, CirclePause } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { instrumentSerif } from "@/lib/fonts";
 import { ATS_LABEL, type AtsSource, type DiscoveredOffer } from "@/lib/explore";
 import { CHINA_SOURCES, EMPLOYER_LABEL } from "@/lib/employer-preset.mjs";
 import { evaluationGateForJob } from "@/lib/job-gate.mjs";
@@ -82,15 +81,15 @@ export function DiscoveryCard({
   return (
     <div
       className={cn(
-        "co-rise group flex min-w-0 rounded-xl border border-border bg-surface/40 text-left transition-all hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-sm",
+        "co-rise group flex min-w-0 rounded-xl border border-border bg-surface shadow-card text-left transition-all hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-sm",
         row ? "flex-wrap items-center gap-x-4 gap-y-1.5 p-3" : "flex-col gap-2.5 p-3.5",
       )}
     >
       <div className={cn("flex items-start gap-3", row && "min-w-0 flex-1 basis-60")}>
         {employer ? <div aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand-text">{offer.company.charAt(0)}</div> : <Logo company={offer.company} />}
         <a href={offer.url} target="_blank" rel="noopener noreferrer" className="block min-w-0 flex-1 max-sm:min-h-[44px]">
-          <h3 className={`${instrumentSerif.className} truncate text-[17px] leading-tight text-foreground transition-colors group-hover:text-brand-text`}>{offer.title}</h3>
-          <p className="mt-0.5 truncate text-[13px] text-muted">
+          <h3 className={`font-display truncate text-[17px] leading-tight text-foreground transition-colors group-hover:text-brand-text`}>{offer.title}</h3>
+          <p className="mt-0.5 truncate text-[14px] text-muted">
             {offer.company}
             {(offer.location || employer) && <span className="text-faint"> · {offer.location || "Location unknown"}</span>}
           </p>
@@ -107,7 +106,7 @@ export function DiscoveryCard({
         </a>
       </div>
 
-      <div className={cn("flex flex-wrap items-center gap-1.5 text-[11px]", row && "shrink-0 basis-72")}>
+      <div className={cn("flex flex-wrap items-center gap-1.5 text-xs", row && "shrink-0 basis-72")}>
         <span className="rounded border border-border px-1.5 py-0.5 font-medium text-muted">{ATS_LABEL[offer.ats as AtsSource] ?? EMPLOYER_LABEL[offer.ats as keyof typeof EMPLOYER_LABEL] ?? offer.ats}</span>
         {(fresh || employer) && <span className="text-faint">{fresh || "Posting date unknown"}</span>}
         {unverified && (
@@ -126,7 +125,7 @@ export function DiscoveryCard({
         {offer.fit && (
           <span
             className={cn(
-              "rounded border px-1 py-0.5 text-[11px] font-medium",
+              "rounded border px-1 py-0.5 text-xs font-medium",
               offer.fit.band === "strong"
                 ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-800 dark:text-emerald-400"
                 : "text-faint",
@@ -139,7 +138,7 @@ export function DiscoveryCard({
       </div>
 
       {offer.why && (
-        <p className={cn("flex items-start gap-1.5 text-[12px] leading-snug text-brand-text", row && "order-last basis-full")}>
+        <p className={cn("flex items-start gap-1.5 text-xs leading-snug text-brand-text", row && "order-last basis-full")}>
           <Sparkles className="mt-0.5 size-3 shrink-0" />
           {offer.why}
         </p>

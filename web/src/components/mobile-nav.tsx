@@ -9,7 +9,6 @@ import { CoMark } from "@/components/co-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { WorkerPills } from "@/components/jobs/worker-pills";
 import { UsageMeter } from "@/components/usage-meter";
-import { instrumentSerif } from "@/lib/fonts";
 import { visibleNavItems, isActivePath } from "@/lib/nav-items";
 import { useJobs } from "@/components/jobs/job-store";
 
@@ -121,7 +120,9 @@ export function MobileNav({ followupsEnabled }: { followupsEnabled: boolean }) {
       <header className="co-mnav flex items-center gap-2 border-b border-border px-4 pb-3 md:hidden">
         <Link href="/" className="flex min-h-[44px] items-center gap-2" aria-label="career-ops home">
           <CoMark size={26} />
-          <span className={`${instrumentSerif.className} relative -top-px text-xl text-landing`}>career-ops</span>
+          <span className="text-xl font-extrabold leading-none tracking-[-0.03em] text-landing">
+            career-ops<span className="text-brand-text">.</span>
+          </span>
         </Link>
         <div className="ml-auto flex items-center gap-0.5">
           <ThemeToggle />
@@ -152,7 +153,7 @@ export function MobileNav({ followupsEnabled }: { followupsEnabled: boolean }) {
         onTouchEnd={onTouchEnd}
       >
         <div className="flex items-center justify-between px-4 py-3">
-          <span className={`${instrumentSerif.className} text-lg text-landing`}>Menu</span>
+          <span className={`font-display text-lg text-landing`}>Menu</span>
           <button
             type="button"
             onClick={() => setOpen(false)}
@@ -173,14 +174,14 @@ export function MobileNav({ followupsEnabled }: { followupsEnabled: boolean }) {
                 onClick={() => setOpen(false)}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-3 text-[15px] transition-colors",
-                  active ? "bg-brand-soft text-brand-text" : "text-muted hover:bg-surface-hover hover:text-foreground",
+                  "flex items-center gap-3 rounded-xl px-4 py-3 text-[15px] font-medium transition-colors",
+                  active ? "bg-brand-soft font-semibold text-brand-text" : "text-muted hover:bg-surface-hover hover:text-foreground",
                 )}
               >
                 <Icon className="size-5" />
                 {label}
                 {chip && (
-                  <span className="ml-auto rounded-full border border-brand/30 bg-brand-soft px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-brand-text">
+                  <span className="ml-auto rounded-full bg-brand-soft px-2 py-0.5 text-[12px] font-semibold tracking-[0.01em] text-brand-text">
                     {chip}
                   </span>
                 )}

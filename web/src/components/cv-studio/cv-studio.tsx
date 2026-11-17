@@ -55,7 +55,7 @@ export function CvStudio({ n }: { n: string }) {
       </BackLink>
       {load.kind === "loading" && <div className="mt-6 h-[70vh] animate-pulse rounded-2xl bg-muted/15" aria-label="Loading the CV Studio" />}
       {load.kind === "error" && (
-        <div className="mt-8 max-w-xl rounded-2xl border border-border bg-surface/40 px-6 py-5">
+        <div className="mt-8 max-w-xl rounded-2xl border border-border bg-surface shadow-card px-6 py-5">
           <h1 className="font-display text-xl text-landing">{REASONS[load.reason]?.title ?? "The CV Studio could not open this CV"}</h1>
           <p className="mt-2 text-sm text-muted">{REASONS[load.reason]?.body ?? "Reload the page to try again."}</p>
         </div>
@@ -292,7 +292,7 @@ function Studio({ n, data }: { n: string; data: Loaded }) {
     <>
       <header className="mt-4 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="font-mono text-xs uppercase tracking-[0.18em] text-faint">CV Studio</p>
+          <p className="font-mono text-xs tracking-[0.01em] text-faint">CV Studio</p>
           <h1 className="mt-1 font-display text-3xl tracking-tight text-landing">{data.company}</h1>
           <p className="mt-1 text-sm text-muted">
             {changed} {changed === 1 ? "change" : "changes"} from your base CV. Review each one, then save the version you will send.

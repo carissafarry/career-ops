@@ -76,7 +76,7 @@ export function TemplateEditor({ kind, name, title, onClose, onSaved }: Props) {
   }, [loaded]);
 
   return (
-    <section aria-label={`Edit ${title}`} className="mt-4 rounded-xl border border-border bg-surface/40 p-3">
+    <section aria-label={`Edit ${title}`} className="mt-4 rounded-xl border border-border bg-surface shadow-card p-3">
       <label htmlFor={fieldId} className="text-sm font-medium">
         {title} (HTML)
       </label>

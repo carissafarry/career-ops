@@ -34,10 +34,10 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
         <ArrowLeft className="size-4" /> Pipeline
       </BackLink>
 
-      <section className="dot-bg relative mt-5 overflow-hidden rounded-2xl border border-border bg-surface/40 px-6 py-7">
+      <section className="dot-bg relative mt-5 overflow-hidden rounded-2xl border border-border bg-surface shadow-card px-6 py-7">
         {job.status === "running" && <HeroGlow />}
         <div className="relative z-10">
-          <p className="flex items-center gap-2 font-mono text-xs uppercase tracking-[0.18em] text-faint">
+          <p className="flex items-center gap-2 font-mono text-xs tracking-[0.01em] text-faint">
             {job.status === "running" ? (
               <><Loader2 className="size-3 animate-spin text-brand-text" /> working</>
             ) : gate || job.status === "gated" ? (
@@ -102,8 +102,8 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
 
       {job.text && (
         <div className="mt-8">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Output</h2>
-          <div className="report-prose mt-3 rounded-2xl border border-border bg-surface/40 p-5">
+          <h2 className="text-xs font-semibold tracking-[0.01em] text-muted">Output</h2>
+          <div className="report-prose mt-3 rounded-2xl border border-border bg-surface shadow-card p-5">
             <ReactMarkdown remarkPlugins={[remarkGfm]} {...noMarkdownImages}>{displayOutput}</ReactMarkdown>
           </div>
           {displayOutput !== job.text && (

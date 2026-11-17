@@ -104,7 +104,7 @@ export function ReportView({
       </BackLink>
 
       <header className="mt-5">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-faint">#{id}</p>
+        <p className="font-mono text-xs tracking-[0.01em] text-faint">#{id}</p>
         <div className="mt-2 flex items-center gap-3">
           <CompanyLogo name={company?.logoName ?? meta?.title ?? `Report #${id}`} size={40} />
           <h1 className="font-display text-3xl tracking-tight text-landing">
@@ -152,7 +152,7 @@ export function ReportView({
               : "border-border bg-surface/50";
             const callout = (
               <div className={`rounded-2xl border px-5 py-5 ${verdictClass}`}>
-                <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-faint">Verdict</p>
+                <p className="font-mono text-xs tracking-[0.01em] text-faint">Verdict</p>
                 <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
                   {score ? (
                     <p className="font-display text-4xl tabular-nums tracking-tight text-landing">{score}</p>
@@ -238,7 +238,7 @@ export function ReportView({
                     );
                   }
                   return (
-                    <details key={i} className="group mt-3 overflow-hidden rounded-xl border border-border bg-surface/30">
+                    <details key={i} className="group mt-3 overflow-hidden rounded-xl border border-border bg-surface shadow-card">
                       <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 px-4 py-3 transition-colors hover:bg-surface-hover">
                         <span className="text-sm font-medium">{cleanHeading(s.heading)}</span>
                         <span className="hidden truncate text-xs text-faint sm:inline print:hidden">{sectionPreview(s.content)}</span>
@@ -254,7 +254,7 @@ export function ReportView({
 
                 {machine.length > 0 && (
                   <div className="print:hidden">
-                    <div className="mt-6 flex items-center gap-3 text-[11px] uppercase tracking-[0.14em] text-faint">
+                    <div className="mt-6 flex items-center gap-3 text-xs tracking-[0.01em] text-faint">
                       <span className="h-px flex-1 bg-border" />
                       Technical details · for developers
                       <span className="h-px flex-1 bg-border" />

@@ -22,7 +22,6 @@ import { EditJobModal } from "./scheduled-scans/edit-job-modal";
 import { JobCard } from "./scheduled-scans/job-card";
 import { RunHistoryDrawer } from "./scheduled-scans/run-history-drawer";
 import type { ScheduledJob, JobRun } from "@/lib/scheduled-jobs";
-import { instrumentSerif } from "@/lib/fonts";
 import { updateScheduledJobRequest } from "@/lib/scheduled-job-client.mjs";
 import { scheduledScansBody } from "@/lib/scheduled-scans-phase.mjs";
 import { isSchedulerStatusPayload } from "@/lib/scheduled-scheduler-status.mjs";
@@ -164,7 +163,7 @@ export function ScheduledJobsView() {
         <div>
           <div className="flex items-center gap-2.5">
             <CalendarClock className="size-6 text-brand-text" />
-            <h1 className={`${instrumentSerif.className} text-3xl text-foreground`}>Scheduled scans</h1>
+            <h1 className={`font-display text-3xl text-foreground`}>Scheduled scans</h1>
           </div>
           <p className="mt-1.5 max-w-2xl text-sm text-muted">
             {SCHEDULED_SCANS_INTRO}
@@ -211,7 +210,7 @@ export function ScheduledJobsView() {
 
       {/* OS Task Scheduler Banner */}
       {scheduler && (
-        <div className="co-rise rounded-2xl border border-border bg-surface/40 p-4 shadow-sm backdrop-blur-sm">
+        <div className="co-rise rounded-2xl border border-border bg-surface shadow-card p-4 shadow-sm backdrop-blur-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="grid size-9 place-items-center rounded-xl bg-surface-hover text-brand-text">
@@ -223,8 +222,8 @@ export function ScheduledJobsView() {
                   <span
                     className={
                       scheduler.task.exists && scheduler.task.enabled
-                        ? "rounded bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 dark:text-emerald-400"
-                        : "rounded bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:text-amber-300"
+                        ? "rounded bg-emerald-500/15 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:text-emerald-400"
+                        : "rounded bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-300"
                     }
                   >
                     {!osScheduler
@@ -366,11 +365,11 @@ function StatCard({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="co-rise flex items-center justify-between rounded-xl border border-border bg-surface/40 p-4 shadow-sm transition-colors hover:border-brand/30">
+    <div className="co-rise flex items-center justify-between rounded-xl border border-border bg-surface shadow-card p-4 shadow-sm transition-colors hover:border-brand/30">
       <div>
         <span className="text-xs font-medium text-muted">{label}</span>
         <div className="mt-1 text-2xl font-bold tracking-tight text-foreground">{value}</div>
-        <div className="mt-0.5 text-[11px] text-faint">{subtitle}</div>
+        <div className="mt-0.5 text-xs text-faint">{subtitle}</div>
       </div>
       <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand-text">
         {icon}

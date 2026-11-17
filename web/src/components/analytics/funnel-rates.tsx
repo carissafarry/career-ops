@@ -105,7 +105,7 @@ export function FunnelRates() {
 
       <dl className="mt-5 grid grid-cols-3 gap-3">
         {rates.map((r) => (
-          <div key={r.key} className="rounded-xl border border-border bg-surface/40 px-3.5 py-3">
+          <div key={r.key} className="rounded-xl border border-border bg-surface shadow-card px-3.5 py-3">
             <dt className="text-xs text-muted">{r.label}</dt>
             <dd className="mt-0.5 text-xl tabular-nums text-foreground">
               {/* null, not 0: a rate with nothing to divide by is absent. An

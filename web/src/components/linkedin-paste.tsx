@@ -50,7 +50,7 @@ export function LinkedInPaste() {
   }
 
   return (
-    <section className="mt-4 rounded-2xl border border-border bg-surface/40 p-5" aria-label="LinkedIn job alerts">
+    <section className="mt-4 rounded-2xl border border-border bg-surface shadow-card p-5" aria-label="LinkedIn job alerts">
       <h2 className="text-sm font-medium text-foreground">LinkedIn job alerts</h2>
       <p className="mt-1 max-w-xl text-sm text-muted">
         Open a LinkedIn job alert. Select all, copy, and paste it here. CareerOps adds the jobs to your Pipeline inbox. You do not need a Google account.

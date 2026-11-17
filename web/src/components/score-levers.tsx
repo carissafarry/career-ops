@@ -14,7 +14,7 @@ function ItemList({ title, hint, items, dot }: { title: string; hint: string; it
           <li key={item.text} className="flex items-start gap-2 text-sm text-foreground">
             <span className={`mt-1.5 size-1.5 shrink-0 rounded-full ${dot}`} />
             <span className="min-w-0 flex-1">{item.text}</span>
-            {item.tag && <span className="shrink-0 text-[11px] uppercase tracking-wide text-faint">{item.tag}</span>}
+            {item.tag && <span className="shrink-0 text-xs tracking-[0.01em] text-faint">{item.tag}</span>}
           </li>
         ))}
       </ul>
@@ -31,8 +31,8 @@ export function ScoreLevers({ report }: { report: string }) {
   const copy = leverCopy();
   if (holding.length + close.length + verify.length + strengths.length === 0) return null;
   return (
-    <section data-testid="score-levers" className="mt-4 rounded-2xl border border-border bg-surface/30 px-5 py-4">
-      <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-faint">{copy.sectionTitle}</p>
+    <section data-testid="score-levers" className="mt-4 rounded-2xl border border-border bg-surface shadow-card px-5 py-4">
+      <p className="font-mono text-xs tracking-[0.01em] text-faint">{copy.sectionTitle}</p>
       <div className="mt-3 grid gap-5 sm:grid-cols-2">
         <ItemList
           title={copy.holdingTitle}

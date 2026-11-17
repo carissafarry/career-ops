@@ -97,13 +97,13 @@ export function UsageMeter() {
 
   return (
     <div className="border-t border-border pt-3">
-      <div className="mb-1.5 flex items-center gap-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-faint">
+      <div className="mb-1.5 flex items-center gap-1.5 px-1 text-xs font-semibold tracking-[0.01em] text-faint">
         <Gauge className="size-3" /> Usage
       </div>
       <div className="space-y-2 px-1">
         {rows.map((r) => (
           <div key={r.label} title={r.title}>
-            <div className="flex items-center justify-between text-[10px] text-faint">
+            <div className="flex items-center justify-between text-xs text-faint">
               <span>{r.label}</span>
               <span className="tabular-nums">{r.text}</span>
             </div>

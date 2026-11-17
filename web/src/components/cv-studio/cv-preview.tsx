@@ -41,7 +41,7 @@ export function CvPreview({ html }: { html: string }) {
   const pages = previewPageCount(contentPx);
 
   return (
-    <section aria-label="Live preview" className="rounded-2xl border border-border bg-surface/40 p-3">
+    <section aria-label="Live preview" className="rounded-2xl border border-border bg-surface shadow-card p-3">
       <div className="mb-2 flex items-center justify-between px-1 text-xs text-muted">
         <span>Live preview</span>
         <span>{pages} page{pages === 1 ? "" : "s"} (estimate)</span>

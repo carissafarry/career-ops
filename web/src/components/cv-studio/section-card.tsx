@@ -41,9 +41,9 @@ export function SectionCard({ section, siblings, first, last, ...common }: Commo
   const isHidden = hidden.has(section.id);
   const items = arrange(section.items, edits.order[section.id]);
   return (
-    <section aria-label={section.title} className={cn("rounded-2xl border border-border bg-surface/40 px-4 py-3 transition-opacity", isHidden && "opacity-50")}>
+    <section aria-label={section.title} className={cn("rounded-2xl border border-border bg-surface shadow-card px-4 py-3 transition-opacity", isHidden && "opacity-50")}>
       <header className="flex items-center gap-1">
-        <h2 className="flex-1 font-mono text-xs uppercase tracking-[0.16em] text-faint">{section.title || "Section"}</h2>
+        <h2 className="flex-1 font-mono text-xs tracking-[0.01em] text-faint">{section.title || "Section"}</h2>
         <MoveButtons parent="root" id={section.id} siblings={siblings} first={first} last={last} dispatch={dispatch} label={`${section.title} section`} />
         <HideButton id={section.id} hidden={isHidden} dispatch={dispatch} label={`${section.title} section`} />
       </header>
@@ -103,7 +103,7 @@ function ItemBlock({ item, section, siblings, first, last, ...common }: Common &
             ) : (
               <li key={`r${idx}`} className="flex items-start gap-2 rounded-lg border border-dashed border-border px-3 py-2 text-sm text-faint">
                 <span className="flex-1">
-                  <span className="mr-1.5 text-[10px] font-medium uppercase tracking-wide">Dropped by the tailor</span>
+                  <span className="mr-1.5 text-xs font-medium tracking-[0.01em]">Dropped by the tailor</span>
                   {r.text}
                 </span>
                 <button className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted hover:border-brand/40 hover:text-brand-text" onClick={() => dispatch({ type: "restore", item: item.id, index: idx })}>
@@ -171,25 +171,25 @@ function BulletRow({ n, bullet, parent, siblings, first, last, movable, edits, h
       )}
       {!editing && shown.source === "tailored" && bullet.change === "edited" && bullet.base !== null && bullet.similarity < REWRITE_FLOOR && (
         <p className="mt-1 text-xs text-faint">
-          <span className="font-medium uppercase tracking-wide">Rewritten from</span> {bullet.base}
+          <span className="font-medium tracking-[0.01em]">Rewritten from</span> {bullet.base}
         </p>
       )}
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
         {bullet.change === "new" && shown.source === "tailored" && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-800 dark:text-amber-300" title="No matching bullet in cv.md. Make sure it is true before you send it.">
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs text-amber-800 dark:text-amber-300" title="No matching bullet in cv.md. Make sure it is true before you send it.">
             <TriangleAlert className="size-3" /> Not in your base CV
           </span>
         )}
         {shown.source === "tailored" &&
           bullet.drivenBy.map((k) => (
-            <span key={k} className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] text-brand-text" title="Job keyword this rewrite added">
+            <span key={k} className="rounded-full bg-brand-soft px-2 py-0.5 text-xs text-brand-text" title="Job keyword this rewrite added">
               +{k}
             </span>
           ))}
-        {shown.source === "custom" && <span className="rounded-full bg-surface-hover px-2 py-0.5 text-[11px] text-muted">Your wording</span>}
+        {shown.source === "custom" && <span className="rounded-full bg-surface-hover px-2 py-0.5 text-xs text-muted">Your wording</span>}
         <span className="flex-1" />
         {bullet.base !== null && bullet.change !== "same" && (
-          <div role="radiogroup" aria-label="Wording" className="inline-flex rounded-full border border-border p-0.5 text-[11px]">
+          <div role="radiogroup" aria-label="Wording" className="inline-flex rounded-full border border-border p-0.5 text-xs">
             {(["tailored", "base"] as const).map((kind) => (
               <button
                 key={kind}
@@ -266,7 +266,7 @@ function RewritePanel({ n, bullet, current, onUse }: { n: string; bullet: Studio
       </form>
       <div className="mt-1.5 flex flex-wrap gap-1">
         {QUICK.map((q) => (
-          <button key={q} type="button" disabled={proposal.kind === "running"} onClick={() => { setInstruction(q); run(q); }} className="rounded-full border border-border bg-background px-2 py-0.5 text-[11px] text-muted hover:border-brand/40 hover:text-brand-text disabled:opacity-50">
+          <button key={q} type="button" disabled={proposal.kind === "running"} onClick={() => { setInstruction(q); run(q); }} className="rounded-full border border-border bg-background px-2 py-0.5 text-xs text-muted hover:border-brand/40 hover:text-brand-text disabled:opacity-50">
             {q}
           </button>
         ))}

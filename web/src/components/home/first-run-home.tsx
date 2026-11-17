@@ -1,6 +1,5 @@
 "use client";
 
-import { instrumentSerif } from "@/lib/fonts";
 import { HeroGlow } from "@/components/hero-glow";
 import { CvIngest } from "@/components/cv/cv-ingest";
 import { LinkedInPaste } from "@/components/linkedin-paste";
@@ -13,17 +12,17 @@ import { OnboardingProgress } from "@/components/home/onboarding-progress";
 export function FirstRunHome() {
   return (
     <div className="mx-auto max-w-3xl px-6 py-10 md:py-16">
-      <section className="dot-bg relative overflow-hidden rounded-2xl border border-border bg-surface/40 px-7 py-10 md:px-10 md:py-12">
+      <section className="dot-bg relative overflow-hidden rounded-2xl border border-border bg-surface shadow-card px-7 py-10 md:px-10 md:py-12">
         <HeroGlow />
         {/* Readability scrim between the animated glow (z-0) and the copy (z-10):
             the glow still reads at the edges, but text always sits on a surface that
             clears WCAG AA contrast instead of washing out over a bright corner. */}
         <div aria-hidden className="pointer-events-none absolute inset-0 z-[1] bg-surface/55 backdrop-blur-[2px] dark:bg-background/45" />
         <div className="relative z-10">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted">
+          <p className="font-mono text-xs tracking-[0.01em] text-muted">
             <span className="text-faint">//</span> local-first · your machine
           </p>
-          <h1 className={`${instrumentSerif.className} mt-3 text-4xl leading-[1.05] text-landing md:text-5xl`}>
+          <h1 className={`font-display mt-3 text-4xl leading-[1.05] text-landing md:text-5xl`}>
             Drop your CV. See who&apos;s hiring you in 60 seconds.
           </h1>
           <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-muted">

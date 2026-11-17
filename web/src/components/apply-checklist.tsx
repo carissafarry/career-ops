@@ -67,7 +67,7 @@ export function ApplyChecklist({
         <ArrowLeft className="size-4" /> Pipeline
       </BackLink>
       <header className="mt-5">
-        <p className="font-mono text-xs uppercase tracking-[0.18em] text-faint">Apply checklist</p>
+        <p className="font-mono text-xs tracking-[0.01em] text-faint">Apply checklist</p>
         <h1 className="mt-2 font-display text-3xl tracking-tight text-landing">{company}</h1>
         {role && <p className="mt-1 text-muted">{role}</p>}
         <Link href={reportHref} className="mt-3 inline-flex text-sm text-brand-text hover:underline">
@@ -147,7 +147,7 @@ export function ApplyChecklist({
         <table className="w-full text-sm">
           <caption className="sr-only">Portal tips</caption>
           <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-faint">
+            <tr className="text-left text-xs tracking-[0.01em] text-faint">
               <th className="py-2 pr-4 font-medium">Portal</th>
               <th className="py-2 font-medium">Tip</th>
             </tr>
@@ -179,7 +179,7 @@ export function ApplyChecklist({
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="mt-8">
-      <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-muted">{title}</h2>
+      <h2 className="text-sm font-semibold tracking-[0.01em] text-muted">{title}</h2>
       <div className="mt-3">{children}</div>
     </section>
   );
@@ -191,7 +191,7 @@ function Empty({ children }: { children: ReactNode }) {
 
 function CopyField({ item }: { item: CopyItem }) {
   return (
-    <div className="rounded-xl border border-border bg-surface/30 px-4 py-3">
+    <div className="rounded-xl border border-border bg-surface shadow-card px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-medium">{item.label}</p>
         <CopyButton text={item.text} label="Copy" />

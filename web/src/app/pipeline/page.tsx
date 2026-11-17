@@ -6,6 +6,7 @@ import { PipelineView } from "@/components/pipeline-view";
 import { pipelineTab } from "@/lib/pipeline-navigation.mjs";
 import { scorePosting } from "@/lib/core/inbox-rank.mjs";
 import { applyInboxFit, loadFitTargets } from "@/lib/inbox-fit-profile.mjs";
+import { readScanRuns, scanSelectorData } from "@/lib/scan-runs";
 
 export const dynamic = "force-dynamic"; // always read fresh local files
 
@@ -19,6 +20,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
   const { inbox } = summary;
   const pending = pendingInbox(inbox);
   const fitted = onInbox ? withInboxFit(pending) : null;
+  const scans = onInbox ? scanSelectorData(readScanRuns()) : null;
   const trackerShape = readTrackerShape();
   // Tracker row numbers whose tailored CV is indexed (data/pdf-index.tsv) AND on
   // disk; the tracker's own PDF emoji can drift from what output/ really holds.
@@ -43,6 +45,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
         inbox={fitted ? fitted.jobs : null}
         inboxCount={pending.length}
         inboxFitError={fitted?.error ?? null}
+        scans={scans}
         trackerShape={trackerShape}
         cvRows={cvRows}
       />

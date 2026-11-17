@@ -14,6 +14,8 @@ import { orderInbox } from "@/lib/core/inbox-rank.mjs";
 import { cursorAfterRemoval, inboxCommand, moveCursor, selectionWithout, typingFromTarget } from "@/lib/inbox-keys.mjs";
 import { inboxScoreTarget, skippableJobs } from "@/lib/inbox-score-target.mjs";
 import { FacetChips } from "./facet-chips";
+import type { ScanRunSummary } from "@/lib/scan-runs";
+import { scanLabel } from "@/lib/scan-runs-core.mjs";
 import { TriageRow, type RowScore } from "./triage-row";
 import { ShortlistTray, type ShortItem } from "./shortlist-tray";
 import { cn } from "@/lib/cn";
@@ -35,7 +37,7 @@ type UndoNotice = { label: string; fn: () => Promise<void>; busy?: boolean; erro
 // The inbox as a TRIAGE surface: Abundance → Triage → Shortlist → Opt-in Score.
 // Default is the best 20 fits (never the full wall). Newest is a view toggle; "Make default" saves the choice per browser.
 // Free facets + Save/Skip narrow the list. Only "Score shortlist" spends tokens.
-export function InboxTriage({ inbox }: { inbox: InboxJob[] }) {
+export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?: { summaries: ScanRunSummary[]; byUrl: Record<string, string> } | null }) {
   const router = useRouter();
   const { jobs, startJob } = useJobs();
   const { sections, setSections } = useEvaluationOptions();
@@ -50,6 +52,7 @@ export function InboxTriage({ inbox }: { inbox: InboxJob[] }) {
   const [seniorities, setSeniorities] = useState<Set<Seniority>>(() => new Set());
   const [locQ, setLocQ] = useState("");
   const [kw, setKw] = useState("");
+  const [scanId, setScanId] = useState("");
   const [showAll, setShowAll] = useState(false);
   // Both start on the default so server and client render the same; the mount
   // effect loads this browser's saved default. Picking a sort only changes the
@@ -188,11 +191,12 @@ export function InboxTriage({ inbox }: { inbox: InboxJob[] }) {
         if (within != null && (e.age == null || e.age > within)) return false;
         if (sources.size && (!e.source || !sources.has(e.source))) return false;
         if (seniorities.size && (!e.seniority || !seniorities.has(e.seniority))) return false;
+        if (scanId && scans?.byUrl[e.job.url] !== scanId) return false;
         if (locQ.trim() && !(e.job.location || "").toLowerCase().includes(locQ.trim().toLowerCase())) return false;
         if (kw.trim() && !`${e.job.company} ${e.job.role}`.toLowerCase().includes(kw.trim().toLowerCase())) return false;
         return true;
       }),
-    [enriched, hidden, within, sources, seniorities, locQ, kw],
+    [enriched, hidden, within, sources, seniorities, locQ, kw, scanId, scans],
   );
 
   // Fit order lives in core/inbox-rank.mjs. This is the only sort.
@@ -202,7 +206,7 @@ export function InboxTriage({ inbox }: { inbox: InboxJob[] }) {
     fit: entry.job.fit ?? null,
   })), sortMode), [filtered, sortMode]);
 
-  const anyFacet = within != null || sources.size > 0 || seniorities.size > 0 || locQ.trim() !== "" || kw.trim() !== "";
+  const anyFacet = within != null || sources.size > 0 || seniorities.size > 0 || locQ.trim() !== "" || kw.trim() !== "" || scanId !== "";
   // Keep the batch cap with filters on too: filters sit under the list, so an
   // uncapped match set pushes what the filter did off screen.
   const capped = !showAll;
@@ -465,7 +469,7 @@ export function InboxTriage({ inbox }: { inbox: InboxJob[] }) {
       )}
 
       {visible.length > 0 ? (
-        <ul className="mt-3 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface/40">
+        <ul className="mt-3 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
           {visible.map((e, index) => (
             <TriageRow
               key={e.job.url}
@@ -496,7 +500,7 @@ export function InboxTriage({ inbox }: { inbox: InboxJob[] }) {
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className="mt-3 inline-flex w-full items-center justify-center gap-1 rounded-xl border border-border bg-surface/40 py-2.5 text-sm font-medium text-muted transition-colors hover:border-brand/40 hover:text-brand-text max-sm:min-h-[44px]"
+          className="mt-3 inline-flex w-full items-center justify-center gap-1 rounded-xl border border-border bg-surface shadow-card py-2.5 text-sm font-medium text-muted transition-colors hover:border-brand/40 hover:text-brand-text max-sm:min-h-[44px]"
         >
           See all {ordered.length}{anyFacet ? " matches" : " in inbox"} →
         </button>
@@ -509,6 +513,21 @@ export function InboxTriage({ inbox }: { inbox: InboxJob[] }) {
       </div>
       <LinkedInPaste />
       <div hidden={inbox.length === 0}>
+      {scans && scans.summaries.length > 0 && (
+        <label className="mb-2.5 flex items-center gap-2 text-xs text-muted">
+          <span className="shrink-0">Scan</span>
+          <select
+            value={scanId}
+            onChange={(e) => setScanId(e.target.value)}
+            className="min-w-0 rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-foreground outline-none focus:border-brand"
+          >
+            <option value="">All scans</option>
+            {scans.summaries.map((run) => (
+              <option key={run.id} value={run.id}>{scanLabel(run)} ({run.added} new)</option>
+            ))}
+          </select>
+        </label>
+      )}
       <FacetChips
         within={within}
         setWithin={setWithin}
@@ -525,7 +544,7 @@ export function InboxTriage({ inbox }: { inbox: InboxJob[] }) {
         resultCount={filtered.length}
         totalCount={enriched.length - hiddenCount}
         anyActive={anyFacet}
-        onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setKw(""); }}
+        onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setKw(""); setScanId(""); }}
       />
       <p className="mt-3 text-xs text-faint">j and k move. s saves. x skips. Shift+X skips the checked rows.</p>
       </div>

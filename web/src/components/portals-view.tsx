@@ -115,7 +115,7 @@ export function PortalsView({
               </span>
             </div>
           )}
-          <ul className="mt-4 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface/40">
+          <ul className="mt-4 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
             {sorted.map((c) => {
               const t = TONE[c.status] ?? TONE.skipped;
               return (
@@ -126,7 +126,7 @@ export function PortalsView({
                   <span className="truncate font-mono text-xs text-faint">{c.detail}</span>
                   <div className="ml-auto flex shrink-0 items-center gap-2">
                     {c.status === "broken" && <FixAffordance company={c.name} job={fixByCompany.get(c.name)} onFix={() => startJob({ title: `Fix · ${c.name}`, subtitle: "repair portal slug", kind: "fix-portal", input: c.name, page: "/portals" })} />}
-                    <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold", t.chip)}>{t.label}</span>
+                    <span className={cn("rounded px-1.5 py-0.5 text-xs font-semibold", t.chip)}>{t.label}</span>
                   </div>
                 </li>
               );
@@ -171,14 +171,14 @@ function WatchedList({ watched }: { watched: WatchedCompany[] }) {
         <span className="tabular-nums">{watched.length - scanned}</span> paused · run a health check to see which boards
         still answer
       </p>
-      <ul className="mt-4 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface/40">
+      <ul className="mt-4 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
         {watched.map((c, i) => (
           <li key={`${i}-${c.name}`} className={cn("flex items-center gap-3 px-4 py-2.5", !c.enabled && "opacity-60")}>
             <CompanyLogo name={c.name} size={20} />
             <span className="shrink-0 text-sm font-medium">{c.name}</span>
             <span className="truncate font-mono text-xs text-faint">{c.host}</span>
             {!c.enabled && (
-              <span className="ml-auto shrink-0 rounded bg-surface-hover px-1.5 py-0.5 text-[10px] font-semibold text-muted">
+              <span className="ml-auto shrink-0 rounded bg-surface-hover px-1.5 py-0.5 text-xs font-semibold text-muted">
                 paused
               </span>
             )}

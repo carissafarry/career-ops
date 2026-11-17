@@ -87,7 +87,7 @@ export function SearchInsights() {
 
 function Panel({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-border bg-surface/40 px-5 py-4">
+    <section className="rounded-2xl border border-border bg-surface shadow-card px-5 py-4">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h3 className="font-display text-base text-landing">{title}</h3>
         {hint && <p className="text-xs text-faint">{hint}</p>}

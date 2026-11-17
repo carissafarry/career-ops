@@ -29,7 +29,7 @@ export type EnrichedOffer = DiscoveredOffer & { inPipeline: boolean; evaluatedN?
 
 type Layout = "grid" | "list";
 
-const segmented = "inline-flex rounded-lg border border-border bg-surface/40 p-0.5 text-xs";
+const segmented = "inline-flex rounded-lg border border-border bg-surface p-0.5 text-xs";
 const segmentOn = "bg-brand-soft text-brand-text";
 const segmentOff = "text-muted hover:text-foreground";
 
@@ -86,22 +86,22 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
             {view.length !== offers.length && <span className="text-faint"> · {view.length} shown</span>}
             <CostBadge kind={isAi ? "spend" : "free-network"} size="xs" className="ml-2 align-middle" />
           </p>
-          <p className="text-[12px] text-faint">
+          <p className="text-xs text-faint">
             {isAi
               ? "found by AI on the open web · unverified until you evaluate"
               : employer ? "From selected employer sites · check the original JD · 0 tokens spent" : `${companiesScanned > 0 ? `${companiesScanned.toLocaleString()} companies scanned · ` : ""}0 tokens spent${partial ? " · some boards were unreachable (normal for public directories)" : ""}`}
           </p>
-          {!isAi && error && <p className="text-[12px] text-amber-800 dark:text-amber-300">{error}</p>}
+          {!isAi && error && <p className="text-xs text-amber-800 dark:text-amber-300">{error}</p>}
         </div>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 rounded-lg border border-border bg-surface/40 px-2.5 py-1.5">
+          <div className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5">
             <Search className="size-3.5 text-faint" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Filter results…"
-              className="w-32 bg-transparent text-[13px] outline-none placeholder:text-faint"
+              className="w-32 bg-transparent text-[14px] outline-none placeholder:text-faint"
             />
           </div>
 
@@ -132,7 +132,7 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
               aria-haspopup="true"
               aria-expanded={sortOpen}
               onClick={() => setSortOpen((o) => !o)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface/40 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-brand-soft hover:text-brand-text"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-brand-soft hover:text-brand-text"
             >
               <ArrowUpDown className="size-3.5 text-faint" />
               Sort: {sortSummary(sort)}
@@ -140,7 +140,7 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
             </button>
             {sortOpen && (
               <div role="group" aria-label="Sort by" className="absolute right-0 top-full z-20 mt-1 w-72 rounded-xl border border-border bg-surface p-1.5 shadow-xl">
-                <p className="px-2 pb-2 pt-1 text-[12px] leading-snug text-muted">Pick one or more. The order you pick is the priority. Use the chip to flip direction.</p>
+                <p className="px-2 pb-2 pt-1 text-xs leading-snug text-muted">Pick one or more. The order you pick is the priority. Use the chip to flip direction.</p>
                 {sortKeys.map((key) => {
                   const idx = sort.findIndex((s) => s.key === key);
                   const on = idx >= 0;
@@ -153,7 +153,7 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
                         aria-disabled={locked || undefined}
                         title={locked ? "At least one sort stays on" : undefined}
                         onClick={() => setSortSpec(toggleSortKey(sort, key))}
-                        className="flex flex-1 items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left text-[13px] text-foreground transition-colors hover:bg-surface-hover"
+                        className="flex flex-1 items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left text-[14px] text-foreground transition-colors hover:bg-surface-hover"
                       >
                         <span className={cn("grid size-4 shrink-0 place-items-center rounded border", on ? "border-brand bg-brand text-white" : "border-border")}>
                           {on && <Check className="size-3" strokeWidth={3} />}
@@ -204,7 +204,7 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
             <button
               type="button"
               onClick={() => addToPipeline(addable)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface/40 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-brand-soft hover:text-brand-text"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-brand-soft hover:text-brand-text"
             >
               <Plus className="size-3.5" /> Add all {addable.length}
             </button>

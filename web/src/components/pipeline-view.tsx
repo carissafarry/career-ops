@@ -11,6 +11,7 @@ import { CANONICAL_STATES, scoreNum, scoreTone } from "@/lib/format";
 import { StatusSelect } from "@/components/status-select";
 import { applicationKey, applySavedStatus, saveStatuses } from "@/lib/pipeline-status.mjs";
 import { InboxTriage } from "@/components/inbox/inbox-triage";
+import type { ScanRunSummary } from "@/lib/scan-runs";
 import { cn } from "@/lib/cn";
 import { companyPresentation, companySearchText } from "@/lib/company-presentation.mjs";
 import { PipelineTableRowsSkeleton } from "@/components/page-loading-skeletons";
@@ -47,6 +48,7 @@ export function PipelineView({
   inbox,
   inboxCount,
   inboxFitError = null,
+  scans = null,
   trackerShape = "rows",
   cvRows = [],
 }: {
@@ -54,6 +56,8 @@ export function PipelineView({
   inbox: InboxJob[] | null;
   inboxCount: number;
   inboxFitError?: string | null;
+  /** Which scan found each inbox role, for the inbox's scan selector. */
+  scans?: { summaries: ScanRunSummary[]; byUrl: Record<string, string> } | null;
   trackerShape?: "missing" | "empty" | "malformed" | "rows";
   /** Tracker row numbers that have a tailored CV PDF on disk. */
   cvRows?: string[];
@@ -763,7 +767,7 @@ export function PipelineView({
       </div>
 
       {/* tabs */}
-      <div className="mt-6 flex min-w-0 flex-nowrap gap-1 overflow-x-auto overflow-y-hidden border-b border-border">
+      <div className="mt-6 flex min-w-0 flex-nowrap gap-1 overflow-x-auto overflow-y-hidden border-b border-border [scrollbar-width:thin]">
         {PIPELINE_TABS.map((t) => {
           const count =
             t === "INBOX"
@@ -782,13 +786,14 @@ export function PipelineView({
               className={cn(
                 // gap-1, not a whitespace text node: flex containers drop
                 // whitespace-only anonymous items, which rendered "INBOX0".
-                "-mb-px inline-flex shrink-0 items-center justify-center gap-1 border-b-2 px-3 py-2 text-xs font-medium transition-colors max-sm:min-h-[44px]",
+                "-mb-px inline-flex shrink-0 items-center justify-center gap-1.5 border-b-2 px-3.5 py-2.5 text-sm font-medium transition-colors max-sm:min-h-[44px]",
                 visibleTab === t
-                  ? "border-brand text-foreground"
+                  ? "border-brand font-semibold text-brand-text"
                   : "border-transparent text-muted hover:text-foreground",
               )}
             >
-              {t} <span className="text-faint tabular-nums">{count}</span>
+              {t.charAt(0) + t.slice(1).toLowerCase()}{" "}
+              <span className={cn("rounded-full px-1.5 text-xs tabular-nums", visibleTab === t ? "bg-brand-soft text-brand-text" : "text-faint")}>{count}</span>
             </button>
           );
         })}
@@ -818,7 +823,7 @@ export function PipelineView({
       )}
 
       {visibleTab !== "INBOX" && selectedRows.length > 0 && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface/60 px-3 py-2 text-sm">
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface shadow-card px-3 py-2 text-sm">
           <span className="tabular-nums">{selectedRows.length} selected</span>
           <select
             aria-label="Status for selected applications"
@@ -910,7 +915,7 @@ export function PipelineView({
               {inboxFitError && (
                 <p role="alert" className="mt-2 whitespace-pre-wrap text-xs text-red-500">{inboxFitError}</p>
               )}
-              <InboxTriage inbox={inbox} />
+              <InboxTriage inbox={inbox} scans={scans} />
               {inbox.length === 0 && <InboxEmpty tracked={visibleApplications.length} />}
             </>
           )}
@@ -927,7 +932,7 @@ export function PipelineView({
             aria-rowcount={filtered.length + 1}
             className="w-full min-w-[44rem] text-sm min-[1440px]:table-fixed min-[1440px]:[&_th:nth-child(1)]:w-11 min-[1440px]:[&_th:nth-child(2)]:w-[4.5rem] min-[1440px]:[&_th:nth-child(3)]:w-[26%] min-[1440px]:[&_th:nth-child(4)]:w-[32%] min-[1440px]:[&_th:nth-child(5)]:w-[5.5rem] min-[1440px]:[&_th:nth-child(6)]:w-[14rem] min-[1440px]:[&_th:nth-child(7)]:w-[6.75rem] min-[1440px]:[&_th:nth-child(8)]:w-[4.75rem]"
           >
-            <thead className="bg-surface/60 text-left text-xs uppercase tracking-wide text-faint">
+            <thead className="bg-surface/60 text-left text-xs tracking-[0.01em] text-faint">
               <tr aria-rowindex={1}>
                 <th className="w-8 px-3 py-2.5">
                   <input
@@ -948,7 +953,7 @@ export function PipelineView({
                   >
                     <button
                       type="button"
-                      className="inline-flex cursor-pointer select-none items-center gap-1 uppercase tracking-wide hover:text-foreground"
+                      className="inline-flex cursor-pointer select-none items-center gap-1 tracking-[0.01em] hover:text-foreground"
                       onClick={() => setParams({ sort: k, dir: sort.key === k ? sort.dir * -1 : -1 })}
                     >
                       {k}
@@ -1197,7 +1202,7 @@ function EmptyTracker({
 // honest for devs (the CLI/file path stays, demoted to progressive transparency).
 function InboxEmpty({ tracked }: { tracked: number }) {
   return (
-    <div className="dot-bg mt-4 overflow-hidden rounded-2xl border border-border bg-surface/50 bg-origin-border bg-gradient-to-tr from-brand/10 via-transparent to-transparent shadow-lg">
+    <div className="dot-bg mt-4 overflow-hidden rounded-2xl border border-border bg-surface shadow-card bg-origin-border bg-gradient-to-tr from-brand/10 via-transparent to-transparent shadow-lg">
       <div className="flex items-center gap-2 border-b border-foreground/10 px-5 py-3">
         <span className="size-2.5 rounded-full bg-foreground/15" aria-hidden="true" />
         <span className="size-2.5 rounded-full bg-foreground/15" aria-hidden="true" />

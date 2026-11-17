@@ -48,7 +48,7 @@ export default function JobsHistory() {
           </span>
         </div>
       ) : (
-        <ul className="mt-6 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface/40">
+        <ul className="mt-6 divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
           {jobs.map((j) => {
             const tone = pillTone(j);
             const gate = evaluationGateForJob(j);

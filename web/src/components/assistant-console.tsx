@@ -939,7 +939,7 @@ export function AssistantConsole() {
             <Link
               href="/config"
               onClick={() => setOpen(false)}
-              className="mx-4 mb-2 flex items-center gap-2 rounded-lg border border-border bg-surface/50 px-3 py-2 text-xs text-muted transition-colors hover:bg-surface-hover hover:text-foreground"
+              className="mx-4 mb-2 flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-xs text-muted transition-colors hover:bg-surface-hover hover:text-foreground"
             >
               <Settings className="size-3.5" /> Pick a CLI in Config to enable the assistant →
             </Link>
@@ -965,7 +965,7 @@ export function AssistantConsole() {
                 rows={1}
                 disabled={!cliId}
                 style={{ maxHeight: INPUT_MAX_PX[size] }}
-                className="flex-1 resize-none rounded-xl border border-border bg-surface/60 px-3 py-2 text-sm outline-none transition-colors placeholder:text-faint focus:border-brand/50 disabled:opacity-50"
+                className="flex-1 resize-none rounded-xl border border-border bg-surface shadow-card px-3 py-2 text-sm outline-none transition-colors placeholder:text-faint focus:border-brand/50 disabled:opacity-50"
               />
               <button
                 onClick={(e) => {
@@ -1032,7 +1032,7 @@ function PartView({
     const job = jobs.find((j) => j.id === part.jobId);
     if (!job)
       return (
-        <Link href={`/jobs/${part.jobId}`} className="block rounded-xl border border-border bg-surface/40 p-2.5 text-xs text-faint hover:text-foreground">
+        <Link href={`/jobs/${part.jobId}`} className="block rounded-xl border border-border bg-surface shadow-card p-2.5 text-xs text-faint hover:text-foreground">
           Worker finished earlier — open log →
         </Link>
       );
@@ -1051,7 +1051,7 @@ function PartView({
   if (part.type === "batch") {
     const children = part.jobIds.map((id) => jobs.find((j) => j.id === id)).filter((j) => j != null);
     return (
-      <div className="rounded-xl border border-border bg-surface/40 p-2.5">
+      <div className="rounded-xl border border-border bg-surface shadow-card p-2.5">
         <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium">
           <Sparkles className="size-3.5 text-brand-text" />
           {part.jobIds.length} evaluations

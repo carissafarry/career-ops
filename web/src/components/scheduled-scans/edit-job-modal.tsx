@@ -101,7 +101,7 @@ export function EditJobModal({
 
           {/* ─── Name + Engine + Cadence ─── */}
           <div>
-            <label className="mb-1 block text-[13px] font-medium text-foreground">Scan Name</label>
+            <label className="mb-1 block text-[14px] font-medium text-foreground">Scan Name</label>
             <input
               ref={nameRef}
               type="text"
@@ -115,7 +115,7 @@ export function EditJobModal({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-[13px] font-medium text-foreground">Where to check</label>
+              <label className="mb-1 block text-[14px] font-medium text-foreground">Where to check</label>
               <select
                 value={engine}
                 onChange={(e) => setEngine(e.target.value as ScanEngine)}
@@ -127,7 +127,7 @@ export function EditJobModal({
             </div>
 
             <div>
-              <label className="mb-1 block text-[13px] font-medium text-foreground">Repeat Cadence</label>
+              <label className="mb-1 block text-[14px] font-medium text-foreground">Repeat Cadence</label>
               <div className="flex gap-2">
                 <input
                   type="number"
@@ -154,7 +154,7 @@ export function EditJobModal({
           </div>
 
           {/* ─── Reuse FilterBuilder from Explore ─── */}
-          <div className="rounded-xl border border-border bg-surface/30 p-4">
+          <div className="rounded-xl border border-border bg-surface shadow-card p-4">
             <FilterBuilder filters={filters} onChange={setFilters} />
           </div>
 

@@ -108,7 +108,7 @@ export function ConfigForm() {
       </p>
 
       {/* Engine mode */}
-      <label className="mt-8 mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+      <label className="mt-8 mb-2 block text-xs font-semibold tracking-[0.01em] text-muted">
         AI Engine
       </label>
       <div>
@@ -207,7 +207,7 @@ export function ConfigForm() {
                     No supported CLI found on your PATH. Install one (e.g. Claude Code, Gemini CLI, OpenCode) to get started.
                   </p>
                 )}
-                <p className="mt-2 text-[11px] leading-relaxed text-faint">
+                <p className="mt-2 text-xs leading-relaxed text-faint">
                   Best on <span className="text-muted">Claude Code</span> (live progress, the agentic apply + AI search,
                   reliable evaluation persistence). Other CLIs work for the core flows with reduced features.
                 </p>
@@ -219,7 +219,7 @@ export function ConfigForm() {
         {mode === "key" && (
           <div className="space-y-5">
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+              <label className="mb-2 block text-xs font-semibold tracking-[0.01em] text-muted">
                 Provider
               </label>
               <div className="grid gap-2 sm:grid-cols-2">
@@ -241,7 +241,7 @@ export function ConfigForm() {
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+              <label className="mb-1 block text-xs font-semibold tracking-[0.01em] text-muted">
                 Paste an AI key
               </label>
               <p className="mb-2 text-xs text-faint">Bring a key from OpenAI, Anthropic, and others.</p>
@@ -251,7 +251,7 @@ export function ConfigForm() {
                 onChange={(e) => setApiKey(e.target.value)}
                 placeholder="sk-…"
                 autoComplete="off"
-                className="w-full rounded-xl border border-border bg-surface/60 px-4 py-2.5 font-mono text-sm outline-none transition-colors placeholder:text-faint focus:border-brand/50"
+                className="w-full rounded-xl border border-border bg-surface shadow-card px-4 py-2.5 font-mono text-sm outline-none transition-colors placeholder:text-faint focus:border-brand/50"
               />
               <p className="mt-2 text-xs text-faint">
                 Stored only in this browser — never sent anywhere but your chosen provider.
@@ -268,13 +268,13 @@ export function ConfigForm() {
       </div>
 
       {/* Appearance / privacy */}
-      <label className="mt-8 mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+      <label className="mt-8 mb-2 block text-xs font-semibold tracking-[0.01em] text-muted">
         Appearance
       </label>
       <button
         type="button"
         onClick={() => setLogos((v) => !v)}
-        className="flex w-full items-center justify-between gap-4 rounded-xl border border-border bg-surface/50 px-4 py-3 text-left transition-colors hover:bg-surface-hover"
+        className="flex w-full items-center justify-between gap-4 rounded-xl border border-border bg-surface shadow-card px-4 py-3 text-left transition-colors hover:bg-surface-hover"
       >
         <span className="min-w-0">
           <span className="block text-sm font-medium text-foreground">Company logos</span>

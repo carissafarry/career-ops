@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bell, CircleHelp, Sparkles, ArrowRight, Undo2, X } from "lucide-react";
-import { instrumentSerif } from "@/lib/fonts";
 import type { Application, InboxJob } from "@/lib/career-ops";
 import type { DiscoveredOffer } from "@/lib/explore";
 import { DiscoveryCard } from "@/components/explore/discovery-card";
@@ -188,13 +187,15 @@ export function TodayDashboard({
   ]).filter((item) => item.count > 0);
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10 max-sm:pb-24">
-      <section className="dot-bg relative overflow-hidden rounded-2xl border border-border bg-surface/40 px-7 py-10 md:px-10 md:py-12">
-        <div>
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted">
-            <span className="text-faint">//</span> today · <span className="tabular-nums">{dateLabel}</span>
+    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 max-sm:pb-24">
+      {/* The one bold element on the page: the violet hero carries today's
+          next action. Everything below it stays white and quiet. */}
+      <section className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-brand via-[#6f42c4] to-[#5530a8] px-6 py-9 text-white shadow-[0_18px_40px_rgb(98_54_184_/_0.28)] sm:px-10 sm:py-12">
+        <div aria-hidden className="pointer-events-none absolute -right-16 -top-20 size-72 rounded-full bg-white/10" />        <div className="relative">
+          <p className="text-sm font-medium text-white/90">
+            <span className="tabular-nums">{dateLabel}</span>
           </p>
-          <h1 className={`${instrumentSerif.className} mt-3 text-4xl leading-[1.05] text-landing md:text-5xl`}>
+          <h1 className="font-display mt-2 max-w-2xl text-[2rem] leading-[1.15] text-white sm:text-[2.75rem]">
             {heroState === "loading" ? (
               <>Your career queue is loading.</>
             ) : heroState === "unavailable" ? (
@@ -205,14 +206,14 @@ export function TodayDashboard({
               <>
                 {queueLead.map((item, index) => (
                   <span key={item.kind}>
-                    {index > 0 && <span className="text-faint"> · </span>}
+                    {index > 0 && <span className="text-white/70"> · </span>}
                     {item.kind === "follow-up" ? (
                       <>
-                        <span className="text-brand-text tabular-nums">{item.count}</span> follow-up{item.count === 1 ? "" : "s"} due
+                        <span className="tabular-nums">{item.count}</span> follow-up{item.count === 1 ? "" : "s"} due
                       </>
                     ) : (
                       <>
-                        <span className="text-brand-text tabular-nums">{item.count}</span> new match{item.count === 1 ? "" : "es"} this week
+                        <span className="tabular-nums">{item.count}</span> new match{item.count === 1 ? "" : "es"} this week
                       </>
                     )}
                   </span>
@@ -226,7 +227,7 @@ export function TodayDashboard({
               <>Your queue is waiting.</>
             )}
           </h1>
-          <p className="mt-4 max-w-xl text-sm text-muted">
+          <p className="mt-4 max-w-xl text-base leading-relaxed text-white/90">
             {heroState === "unavailable"
               ? "We couldn't load all of today's updates. Try again."
               : heroState === "queue-partial"
@@ -237,20 +238,25 @@ export function TodayDashboard({
                     ? "Your action queue for today — discovery and follow-ups, in one place."
                     : "Your action queue for today, in one place."}
           </p>
-          <div className="mt-6 flex flex-wrap gap-2.5">
-            <Link href="/explore" className="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-medium text-brand-foreground transition hover:bg-brand-200 max-sm:min-h-[44px]">
+          <div className="mt-7 flex flex-wrap gap-3">
+            <Link href="/explore" className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-[#5530a8] shadow-sm transition-colors hover:bg-white/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand max-sm:min-h-[44px]">
               Find new roles <ArrowRight className="size-4" />
             </Link>
-            <Link href="/pipeline" className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-medium text-foreground transition hover:border-brand/40 hover:text-brand-text max-sm:min-h-[44px]">
+            <Link href="/pipeline" className="inline-flex items-center gap-2 rounded-full border border-white/50 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white max-sm:min-h-[44px]">
               Open pipeline
             </Link>
           </div>
-          <QuickEvaluate />
         </div>
       </section>
 
+      <section aria-labelledby="today-evaluate" className="mt-6 rounded-2xl border border-border bg-surface px-6 py-6 shadow-card sm:px-8">
+        <h2 id="today-evaluate" className="text-lg font-bold tracking-[-0.01em] text-landing">Evaluate a job</h2>
+        <p className="mt-1 text-sm text-muted">Paste a posting link and get a scored report in your pipeline.</p>
+        <QuickEvaluate />
+      </section>
+
       {dataError && !dataLoading && (
-        <div role="alert" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface/40 px-5 py-4 text-sm text-muted">
+        <div role="alert" className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface shadow-card px-5 py-4 text-sm text-muted">
           <p>{missingSources} could not be loaded.</p>
           <button type="button" onClick={refetch} className="font-medium text-brand-text hover:underline">Retry updates</button>
         </div>
@@ -348,7 +354,7 @@ export function TodayDashboard({
       )}
 
       {allClear && upcoming.length === 0 && (
-        <div className="mt-8 rounded-2xl border border-border bg-surface/30 px-6 py-10 text-center">
+        <div className="mt-8 rounded-2xl border border-border bg-surface shadow-card px-6 py-10 text-center">
           <Sparkles className="mx-auto size-6 text-brand-text" />
           <p className="mx-auto mt-3 max-w-md text-sm text-muted">
             Nothing needs you right now. Run a <Link href="/explore" className="text-brand-text hover:underline">free scan</Link> to surface this week&apos;s roles, or check your <Link href="/pipeline" className="text-brand-text hover:underline">pipeline</Link>.
@@ -382,11 +388,13 @@ export function TodayDashboard({
 
 function Section({ icon: Icon, title, hint, children }: { icon: React.ComponentType<{ className?: string }>; title: string; hint: string; children: React.ReactNode }) {
   return (
-    <section className="mt-10">
-      <div className="mb-3 flex items-center gap-2">
-        <Icon className="size-4 text-brand-text" />
-        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-muted">{title}</h2>
-        <span className="text-xs text-faint">· {hint}</span>
+    <section className="mt-12">
+      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="inline-flex size-8 items-center justify-center rounded-lg bg-brand-soft">
+          <Icon className="size-4 text-brand-text" />
+        </span>
+        <h2 className="text-lg font-bold tracking-[-0.01em] text-landing">{title}</h2>
+        <span className="text-sm text-faint">{hint}</span>
       </div>
       {children}
     </section>

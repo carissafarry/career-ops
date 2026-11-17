@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { instrumentSerif } from "@/lib/fonts";
 import { cn } from "@/lib/cn";
 
-// Stat tile with the home's resting gradient corner + lit edge + shadow. The
-// number is serif ONLY when `featured` (≤1 serif number per route); the rest
-// use Inter tabular-nums so numerals never form a serif wall.
+// Stat tile: white card, soft shadow, icon in a pale violet square, bold
+// tabular number. `featured` (≤1 per route) colors the number violet.
+// `corner` is kept for callers; the old gradient corner is gone.
 const CORNERS = {
   br: "bg-gradient-to-br",
   bl: "bg-gradient-to-bl",
@@ -31,23 +30,24 @@ export function StatCard({
   return (
     <Link
       href={href}
+      data-corner={corner}
       className={cn(
-        "group relative overflow-hidden rounded-2xl border border-border bg-surface/50 bg-origin-border p-5 shadow-lg transition-colors",
-        CORNERS[corner],
-        "from-brand/10 via-transparent to-transparent",
-        "hover:border-brand/40 hover:bg-surface-hover group-hover:from-brand/20",
+        "group relative overflow-hidden rounded-2xl border border-border bg-surface p-6 shadow-card transition-colors",
+        "hover:border-brand/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50",
       )}
     >
-      <Icon className="size-5 text-brand-text" />
+      <span className="inline-flex size-10 items-center justify-center rounded-xl bg-brand-soft">
+        <Icon className="size-5 text-brand-text" />
+      </span>
       <div
         className={cn(
-          "mt-3 text-4xl leading-none tabular-nums",
-          featured ? instrumentSerif.className : "font-semibold",
+          "mt-4 text-4xl leading-none tracking-[-0.02em] tabular-nums",
+          featured ? "font-extrabold text-brand-text" : "font-bold",
         )}
       >
         {value}
       </div>
-      <div className="mt-2 text-sm text-foreground">{label}</div>
+      <div className="mt-2 text-sm font-medium text-foreground">{label}</div>
       <div className="text-xs text-faint">{hint}</div>
     </Link>
   );

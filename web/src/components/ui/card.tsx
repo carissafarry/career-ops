@@ -1,14 +1,9 @@
 import { cn } from "@/lib/cn";
 
-// Panel with the docs home signature: a resting rotating brand-gradient corner
-// that lights the 1px edge (bg-origin-border). Both opt-in — dense work
-// surfaces (tables, lists) pass neither corner nor elevated.
-const CORNERS = {
-  br: "bg-gradient-to-br",
-  bl: "bg-gradient-to-bl",
-  tr: "bg-gradient-to-tr",
-  tl: "bg-gradient-to-tl",
-} as const;
+// White panel with a faint neutral border and a soft shadow. `elevated` lifts
+// it a step further. `corner` is kept for callers but no longer paints a
+// gradient: violet is reserved for accents, not surface washes.
+type Corner = "br" | "bl" | "tr" | "tl";
 
 export function Card({
   className,
@@ -16,15 +11,15 @@ export function Card({
   elevated,
   ...props
 }: React.HTMLAttributes<HTMLDivElement> & {
-  corner?: keyof typeof CORNERS;
+  corner?: Corner;
   elevated?: boolean;
 }) {
   return (
     <div
+      data-corner={corner}
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-border bg-surface/50 p-5",
-        corner && `${CORNERS[corner]} from-brand/10 via-transparent to-transparent bg-origin-border`,
-        elevated && "shadow-lg",
+        "relative overflow-hidden rounded-2xl border border-border bg-surface p-6",
+        elevated ? "shadow-lg" : "shadow-card",
         className,
       )}
       {...props}

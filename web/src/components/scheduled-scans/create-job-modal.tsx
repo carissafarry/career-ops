@@ -77,7 +77,7 @@ export function CreateJobModal({
 
           {/* ─── Name + Engine + Cadence ─── */}
           <div>
-            <label className="mb-1 block text-[13px] font-medium text-foreground">Scan Name</label>
+            <label className="mb-1 block text-[14px] font-medium text-foreground">Scan Name</label>
             <input
               ref={nameRef}
               type="text"
@@ -91,7 +91,7 @@ export function CreateJobModal({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-[13px] font-medium text-foreground">Where to check</label>
+              <label className="mb-1 block text-[14px] font-medium text-foreground">Where to check</label>
               <select
                 value={engine}
                 onChange={(e) => setEngine(e.target.value as ScanEngine)}
@@ -100,11 +100,11 @@ export function CreateJobModal({
                 <option value="full">{scanEngineLabel("full")}</option>
                 <option value="portals">{scanEngineLabel("portals")}</option>
               </select>
-              <p className="mt-1 text-[11px] text-faint">{scanEngineDetail(engine)}</p>
+              <p className="mt-1 text-xs text-faint">{scanEngineDetail(engine)}</p>
             </div>
 
             <div>
-              <label className="mb-1 block text-[13px] font-medium text-foreground">Repeat Cadence</label>
+              <label className="mb-1 block text-[14px] font-medium text-foreground">Repeat Cadence</label>
               <div className="flex gap-2">
                 <input
                   type="number"
@@ -131,7 +131,7 @@ export function CreateJobModal({
           </div>
 
           {/* ─── Reuse FilterBuilder from Explore ─── */}
-          <div className="rounded-xl border border-border bg-surface/30 p-4">
+          <div className="rounded-xl border border-border bg-surface shadow-card p-4">
             <FilterBuilder filters={filters} onChange={setFilters} />
           </div>
 

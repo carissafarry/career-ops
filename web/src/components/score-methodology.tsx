@@ -16,7 +16,7 @@ const BLOCKS: [string, string][] = [
 
 export function ScoreMethodology() {
   return (
-    <details className="group mt-10 overflow-hidden rounded-2xl border border-border bg-surface/30">
+    <details className="group mt-10 overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
       <summary className="flex cursor-pointer list-none items-center gap-2 px-5 py-3.5 text-sm font-medium transition-colors hover:bg-surface-hover">
         How career-ops scored this, and why it is for <span className="text-landing">you</span>
         <ChevronDown className="ml-auto size-4 text-faint transition-transform group-open:rotate-180" />
@@ -32,7 +32,7 @@ export function ScoreMethodology() {
           ))}
         </ul>
         <div>
-          <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-faint">The five dimensions</div>
+          <div className="mb-2 text-xs font-semibold tracking-[0.01em] text-faint">The five dimensions</div>
           <ul className="space-y-1.5">
             {scoringDimensions().map((row) => (
               <li key={row.name}>
@@ -45,7 +45,7 @@ export function ScoreMethodology() {
           These do not move the score: {ignoredByScore().join(", ")}.
         </p>
         <div>
-          <div className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-faint">What each report block means</div>
+          <div className="mb-2 text-xs font-semibold tracking-[0.01em] text-faint">What each report block means</div>
           <ul className="space-y-2">
             {BLOCKS.map(([k, v]) => (
               <li key={k} className="flex items-start gap-2.5">
