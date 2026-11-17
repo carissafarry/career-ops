@@ -21,7 +21,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
   const { inbox } = summary;
   const pending = pendingInbox(inbox);
   const fitted = onInbox ? withInboxFit(pending.map((job) => ({ ...job, locationKeys: locationKeys(job.location ?? "") }))) : null;
-  const scans = onInbox ? scanSelectorData(readScanRuns()) : null;
+  const scans = onInbox ? scanSelectorData(readScanRuns(), pending.map((job) => job.url)) : null;
   const trackerShape = readTrackerShape();
   // Tracker row numbers whose tailored CV is indexed (data/pdf-index.tsv) AND on
   // disk; the tracker's own PDF emoji can drift from what output/ really holds.

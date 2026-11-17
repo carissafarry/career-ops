@@ -435,7 +435,7 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
           >
             <option value="">All scans</option>
             {scans.summaries.map((run) => (
-              <option key={run.id} value={run.id}>{scanLabel(run)} ({run.added} new)</option>
+              <option key={run.id} value={run.id}>{scanLabel(run)} ({run.added} found, {run.inInbox} in pipeline)</option>
             ))}
           </select>
         </label>

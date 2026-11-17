@@ -15,7 +15,10 @@ export type ScanRun = {
   postings: ScanPosting[];
 };
 /** What the pipeline's scan selector needs: no postings, just the label data. */
-export type ScanRunSummary = Pick<ScanRun, "id" | "kind" | "startedAt" | "added">;
+export type ScanRunSummary = Pick<ScanRun, "id" | "kind" | "startedAt" | "added"> & {
+  /** How many of this scan's roles are in the pipeline inbox right now. */
+  inInbox: number;
+};
 
 function readData(rel: string): string {
   try {
@@ -36,9 +39,19 @@ export function readScanRuns(): ScanRun[] {
   }) as ScanRun[];
 }
 
-export function scanSelectorData(runs: ScanRun[]): { summaries: ScanRunSummary[]; byUrl: Record<string, string> } {
+export function scanSelectorData(
+  runs: ScanRun[],
+  inboxUrls: Iterable<string> = [],
+): { summaries: ScanRunSummary[]; byUrl: Record<string, string> } {
+  const inbox = new Set(inboxUrls);
   return {
-    summaries: runs.map(({ id, kind, startedAt, added }) => ({ id, kind, startedAt, added })),
+    summaries: runs.map(({ id, kind, startedAt, added, postings }) => ({
+      id,
+      kind,
+      startedAt,
+      added,
+      inInbox: postings.reduce((count, p) => count + (inbox.has(p.url) ? 1 : 0), 0),
+    })),
     byUrl: scanIdByUrl(runs) as Record<string, string>,
   };
 }
