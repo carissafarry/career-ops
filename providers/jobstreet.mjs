@@ -34,6 +34,9 @@ import { fetchJsonWithRetry, sleep } from "./_http.mjs";
 // Portal entry fields (all optional except `provider`):
 //   api             — v5 search endpoint URL (default: https://id.jobstreet.com/api/jobsearch/v5/search)
 //   siteKey         — SEEK site key for regional filtering (default: "ID-Main")
+//   dateRange       — Only postings listed in the last N days (SEEK accepts 1, 3, 7, 14, 31;
+//                     N rounds up). The scan's own lookback (--since) narrows it further.
+//                     Results always come back newest first (sortmode=ListedDate).
 //   searchKeywords  — Search keywords, space-separated (default: "")
 //   searchLocation  — Location filter (default: "")
 //   pageSize        — Results per page (default 30, hard-capped at 100)
@@ -257,13 +260,43 @@ export function parseJobstreetItem(
  */
 function buildSearchUrl(origin, params) {
   const url = new URL(V5_SEARCH_PATH, origin);
-  const { siteKey, keywords, location, pageSize, page } = params;
+  const { siteKey, keywords, location, pageSize, page, dateRange } = params;
   if (siteKey) url.searchParams.set("siteKey", siteKey);
   if (keywords) url.searchParams.set("keywords", keywords);
   if (location) url.searchParams.set("where", location);
+  // Newest first, decided by the server. Checked against the live API: the page
+  // comes back in descending listing order, where the default order is relevance.
+  url.searchParams.set("sortmode", "ListedDate");
+  // Only postings listed within this many days; the server drops the rest, so they
+  // are never fetched. SEEK accepts 1, 3, 7, 14 and 31.
+  if (dateRange) url.searchParams.set("dateRange", String(dateRange));
   url.searchParams.set("pageSize", String(pageSize || DEFAULT_PAGE_SIZE));
   url.searchParams.set("page", String(page || 1));
   return url.href;
+}
+
+// SEEK's date-range choices, in days. A wanted window rounds UP to the next one, so
+// the server never drops a posting the scan's own age filter would have kept.
+const SEEK_DATE_RANGES = [1, 3, 7, 14, 31];
+
+/**
+ * Days to ask SEEK for: the narrower of the scan's lookback (ctx.sinceMs) and the
+ * entry's own `dateRange`, rounded up to a value SEEK accepts. null = no limit.
+ * @param {{sinceMs?: number}} ctx
+ * @param {{dateRange?: unknown}} entry
+ * @param {number} [now]
+ * @returns {number | null}
+ */
+export function resolveDateRange(ctx, entry, now = Date.now()) {
+  const wanted = [];
+  if (typeof ctx?.sinceMs === "number" && Number.isFinite(ctx.sinceMs) && ctx.sinceMs < now) {
+    wanted.push(Math.ceil((now - ctx.sinceMs) / 86_400_000));
+  }
+  const configured = Number(entry?.dateRange);
+  if (Number.isFinite(configured) && configured > 0) wanted.push(Math.ceil(configured));
+  if (wanted.length === 0) return null;
+  const days = Math.max(1, Math.min(...wanted));
+  return SEEK_DATE_RANGES.find((range) => range >= days) ?? null;
 }
 
 /** @type {Provider} */
@@ -313,6 +346,7 @@ export default {
     const maxPages = Math.min(entryMaxPages, probeCap ?? Infinity);
     const fallbackCompany = entry.name || "";
     const appendWorkType = entry.appendWorkType === true;
+    const dateRange = resolveDateRange(ctx, entry);
 
     /** @type {JobstreetJobs} */
     const allJobs = [];
@@ -330,6 +364,7 @@ export default {
         location: searchLocation,
         pageSize,
         page,
+        dateRange,
       });
 
       let json;
