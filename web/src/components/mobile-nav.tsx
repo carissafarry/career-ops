@@ -8,7 +8,6 @@ import { cn } from "@/lib/cn";
 import { CoMark } from "@/components/co-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { WorkerPills } from "@/components/jobs/worker-pills";
-import { UsageMeter } from "@/components/usage-meter";
 import { visibleNavItems, isActivePath } from "@/lib/nav-items";
 import { useJobs } from "@/components/jobs/job-store";
 
@@ -195,7 +194,6 @@ export function MobileNav({ followupsEnabled }: { followupsEnabled: boolean }) {
         </div>
 
         <div className="co-msafe mt-auto space-y-3 border-t border-border px-4 pt-4">
-          <UsageMeter />
           <ThemeToggle showLabel className="bg-surface-hover/40" />
         </div>
       </aside>

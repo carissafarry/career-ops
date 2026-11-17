@@ -6,16 +6,18 @@ import { test } from "node:test";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
 
-test("the inbox list sits above LinkedIn and the filters", () => {
+// Customized in this fork: the filters sit ABOVE the list so they read before the
+// roles they narrow (upstream put them below). LinkedIn stays under the list.
+test("the filters sit above the inbox list, and LinkedIn sits below it", () => {
   const triage = readFileSync(join(root, "src/components/inbox/inbox-triage.tsx"), "utf8");
   const list = triage.indexOf("<ul");
   const paste = triage.indexOf("<LinkedInPaste");
   const filters = triage.indexOf("<FacetChips");
   const keys = triage.indexOf("j and k move");
   assert.ok(list > 0, "the inbox renders a list");
+  assert.ok(filters > 0 && filters < list, "the filters sit above the list");
   assert.ok(paste > list, "LinkedIn sits under the list");
-  assert.ok(filters > list, "the filters sit under the list");
-  assert.ok(keys > filters, "the keyboard hint sits with the filters");
+  assert.ok(keys > filters && keys < list, "the keyboard hint sits with the filters");
 
   const pipeline = readFileSync(join(root, "src/components/pipeline-view.tsx"), "utf8");
   assert.doesNotMatch(pipeline, /LinkedInPaste/);

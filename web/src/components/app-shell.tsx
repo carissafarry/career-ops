@@ -16,7 +16,6 @@ import { ExploreProvider } from "@/components/explore/explore-provider";
 import { FirstScoreView } from "@/components/explore/first-score-view";
 import { BetaBanner } from "@/components/beta/beta-banner";
 import { WorkerPills } from "@/components/jobs/worker-pills";
-import { UsageMeter } from "@/components/usage-meter";
 import { visibleNavItems, isActivePath } from "@/lib/nav-items";
 
 export function AppShell({ children, followupsEnabled }: { children: React.ReactNode; followupsEnabled: boolean }) {
@@ -72,7 +71,6 @@ export function AppShell({ children, followupsEnabled }: { children: React.React
           <WorkerPills />
 
           <div className="mt-auto space-y-3 pb-16 pt-4 md-tall:pb-40">
-            <UsageMeter />
             <ThemeToggle showLabel />
           </div>
         </aside>
