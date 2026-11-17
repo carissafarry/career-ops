@@ -422,6 +422,43 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
   return (
     <div className={cn("mx-auto mt-4 max-w-3xl", shortlist.length > 0 && "pb-28 sm:pb-24")}>
       {writeError && <p role="alert" className="mb-3 text-sm text-red-700 dark:text-red-400">{writeError}</p>}
+      {/* Filters sit at the very top so they read before the list they narrow. */}
+      <div hidden={inbox.length === 0}>
+      {scans && scans.summaries.length > 0 && (
+        <label className="mb-2.5 flex items-center gap-2 text-xs text-muted">
+          <span className="shrink-0">Scan</span>
+          <select
+            value={scanId}
+            onChange={(e) => setScanId(e.target.value)}
+            className="min-w-0 rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-foreground outline-none focus:border-brand"
+          >
+            <option value="">All scans</option>
+            {scans.summaries.map((run) => (
+              <option key={run.id} value={run.id}>{scanLabel(run)} ({run.added} new)</option>
+            ))}
+          </select>
+        </label>
+      )}
+      <FacetChips
+        within={within}
+        setWithin={setWithin}
+        sources={sources}
+        toggleSource={(s) => setSources((set) => { const n = new Set(set); n.has(s) ? n.delete(s) : n.add(s); return n; })}
+        seniorities={seniorities}
+        toggleSeniority={(s) => setSeniorities((set) => { const n = new Set(set); n.has(s) ? n.delete(s) : n.add(s); return n; })}
+        locQ={locQ}
+        setLocQ={setLocQ}
+        kw={kw}
+        setKw={setKw}
+        availSources={availSources}
+        availSeniorities={availSeniorities}
+        resultCount={filtered.length}
+        totalCount={enriched.length - hiddenCount}
+        anyActive={anyFacet}
+        onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setKw(""); setScanId(""); }}
+      />
+      <p className="mt-3 text-xs text-faint">j and k move. s saves. x skips. Shift+X skips the checked rows.</p>
+      </div>
       {/* Keep recovery mounted when the last Skip refreshes to an empty inbox. */}
       <div hidden={inbox.length === 0}>
       {/* batch header: fresh/filtered slice by default; "See all" lifts the cap */}
@@ -512,42 +549,6 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
       )}
       </div>
       <LinkedInPaste />
-      <div hidden={inbox.length === 0}>
-      {scans && scans.summaries.length > 0 && (
-        <label className="mb-2.5 flex items-center gap-2 text-xs text-muted">
-          <span className="shrink-0">Scan</span>
-          <select
-            value={scanId}
-            onChange={(e) => setScanId(e.target.value)}
-            className="min-w-0 rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-foreground outline-none focus:border-brand"
-          >
-            <option value="">All scans</option>
-            {scans.summaries.map((run) => (
-              <option key={run.id} value={run.id}>{scanLabel(run)} ({run.added} new)</option>
-            ))}
-          </select>
-        </label>
-      )}
-      <FacetChips
-        within={within}
-        setWithin={setWithin}
-        sources={sources}
-        toggleSource={(s) => setSources((set) => { const n = new Set(set); n.has(s) ? n.delete(s) : n.add(s); return n; })}
-        seniorities={seniorities}
-        toggleSeniority={(s) => setSeniorities((set) => { const n = new Set(set); n.has(s) ? n.delete(s) : n.add(s); return n; })}
-        locQ={locQ}
-        setLocQ={setLocQ}
-        kw={kw}
-        setKw={setKw}
-        availSources={availSources}
-        availSeniorities={availSeniorities}
-        resultCount={filtered.length}
-        totalCount={enriched.length - hiddenCount}
-        anyActive={anyFacet}
-        onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setKw(""); setScanId(""); }}
-      />
-      <p className="mt-3 text-xs text-faint">j and k move. s saves. x skips. Shift+X skips the checked rows.</p>
-      </div>
 
       {/* undo toast (sits above the tray) */}
       {undo && (
