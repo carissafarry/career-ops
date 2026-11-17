@@ -14,8 +14,8 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const AGENTS = [
-  { label: "io.career-ops.scheduled-scan", what: "Scan worker (checks every 15 minutes)" },
-  { label: "io.career-ops.notify", what: "Notifier (checks every 5 minutes)" },
+  { label: "io.career-ops.scheduled-scan", what: "Scan worker (checks every 2 minutes)" },
+  { label: "io.career-ops.notify", what: "Notifier (checks every 2 minutes)" },
 ];
 
 /** "3 hours ago" style text, in Indonesian. */

@@ -1,6 +1,6 @@
 #!/bin/sh
 # Install the new-role notifier for the current user (macOS LaunchAgent).
-# It runs scripts/notify-new-roles.mjs every 5 minutes. The script shows a notification only
+# It runs scripts/notify-new-roles.mjs every 2 minutes. The script shows a notification only
 # when a scan has added roles since it last looked, so a quiet run does nothing.
 #
 #   sh scripts/install-notify-schedule.sh
@@ -54,7 +54,7 @@ cat > "$PLIST" <<EOF
     <string>$SCRIPT</string>
   </array>
   <key>WorkingDirectory</key><string>$ROOT</string>
-  <key>StartInterval</key><integer>300</integer>
+  <key>StartInterval</key><integer>120</integer>
   <key>RunAtLoad</key><true/>
   <key>StandardOutPath</key><string>$LOG</string>
   <key>StandardErrorPath</key><string>$LOG</string>
@@ -64,4 +64,4 @@ EOF
 
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
-echo "installed $LABEL (every 5 minutes), log: $LOG"
+echo "installed $LABEL (every 2 minutes), log: $LOG"

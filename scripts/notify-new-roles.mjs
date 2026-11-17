@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // notify-new-roles.mjs: show a macOS notification when a scan has added new roles.
 //
-// A scheduled scan (web/scripts/scheduled-jobs-runner.mjs) appends one row per run to
-// data/scan-runs.tsv. This script looks for rows it has not announced yet, sums their
-// `new_added`, and shows ONE notification. It writes nothing but its own state file
-// (data/.notify-state.json), so it can run on its own short timer without touching the
-// runner. With terminal-notifier installed, clicking the notification opens the dashboard.
+// Every scan (the portals scan, the full ATS sweep, scheduled or by hand) appends the
+// roles it adds to data/scan-history.tsv. This script remembers how far into that file
+// it has read (a byte offset), counts the roles added since, and shows ONE notification.
+// It writes nothing but its own state file (data/.notify-state.json), so it can run on
+// its own short timer without touching the scanner. With terminal-notifier installed,
+// clicking the notification opens the dashboard.
 //
 //   node scripts/notify-new-roles.mjs            announce unseen scan runs
 //   node scripts/notify-new-roles.mjs --test     show a sample notification
@@ -35,27 +36,25 @@ export function cleanText(value, max = 80) {
 
 const rows = (text) => String(text ?? "").split(/\r?\n/).filter(Boolean).map((line) => line.split("\t"));
 
-/** Scan runs logged after `lastTimestamp`, oldest first, with the roles they added. */
-export function unseenRuns(runsTsv, lastTimestamp) {
-  const [header = [], ...body] = rows(runsTsv);
-  const at = header.indexOf("timestamp");
-  const added = header.indexOf("new_added");
-  if (at < 0 || added < 0) return [];
-  return body
-    .map((cols) => ({ timestamp: cols[at] ?? "", added: Number.parseInt(cols[added] ?? "", 10) || 0 }))
-    .filter((run) => run.timestamp && (!lastTimestamp || run.timestamp > lastTimestamp))
-    .sort((a, b) => (a.timestamp < b.timestamp ? -1 : 1));
-}
-
-/** The newest `count` roles scan-history.tsv recorded as added: [{ company, role }], newest first. */
-export function newestAdded(historyTsv, count) {
-  const found = [];
-  for (const cols of rows(historyTsv).reverse()) {
-    if (cols[5] !== "added") continue;
-    found.push({ role: cols[3] ?? "", company: cols[4] ?? "" });
-    if (found.length >= count) break;
+/**
+ * Roles the scan history gained after `offset` bytes, newest first. Every scan, the
+ * portals one, the full ATS sweep and the scheduled jobs, appends its finds to the
+ * history, so this sees them all. Returns the roles and the offset to continue from.
+ * An offset past the end (the file was rewritten shorter) restarts from the end
+ * without announcing anything. Only whole lines count, so a half-written line waits.
+ * @param {Buffer} history
+ * @param {number} offset
+ */
+export function addedSince(history, offset) {
+  const size = history.length;
+  if (!Number.isInteger(offset) || offset < 0 || offset > size) return { roles: [], next: size, reset: true };
+  const lastNewline = history.lastIndexOf(0x0a);
+  const end = lastNewline < offset ? offset : lastNewline + 1;
+  const roles = [];
+  for (const cols of rows(history.subarray(offset, end).toString("utf8"))) {
+    if (cols[5] === "added") roles.push({ role: cols[3] ?? "", company: cols[4] ?? "" });
   }
-  return found;
+  return { roles: roles.reverse(), next: end, reset: false };
 }
 
 /** { subtitle, message } for the notification, or null when there is nothing to say. */
@@ -111,31 +110,37 @@ async function main() {
   const { getCareerOpsRoot } = await import(pathToFileURL(path.join(root, "path-resolver.mjs")).href);
   const dataRoot = getCareerOpsRoot();
   const statePath = path.join(dataRoot, "data", ".notify-state.json");
-  let last = "";
+  const historyPath = path.join(dataRoot, "data", "scan-history.tsv");
+  const history = existsSync(historyPath) ? readFileSync(historyPath) : Buffer.alloc(0);
+  let offset;
   try {
-    last = JSON.parse(read(statePath) || "{}").lastTimestamp || "";
+    offset = JSON.parse(read(statePath) || "{}").historyOffset;
   } catch {
-    last = "";
+    offset = undefined;
   }
+  const save = (next) => {
+    if (!args.has("--dry-run")) writeFileSync(statePath, JSON.stringify({ historyOffset: next }));
+  };
 
-  const runs = unseenRuns(read(path.join(dataRoot, "data", "scan-runs.tsv")), last);
-  if (runs.length === 0) return;
-  const newest = runs[runs.length - 1].timestamp;
-
-  if (!last) {
-    // First run: start from now instead of announcing the backlog.
-    if (!args.has("--dry-run")) writeFileSync(statePath, JSON.stringify({ lastTimestamp: newest }));
+  if (offset === undefined) {
+    // First run: start from the end of the history instead of announcing the backlog.
+    save(history.length);
     console.log("first run: starts from the latest scan, nothing announced");
     return;
   }
 
-  const total = runs.reduce((sum, run) => sum + run.added, 0);
-  const message = buildMessage(total, newestAdded(read(path.join(dataRoot, "data", "scan-history.tsv")), total));
+  const { roles, next, reset } = addedSince(history, offset);
+  if (reset) {
+    save(next);
+    console.log("history was rewritten: starting again from its end, nothing announced");
+    return;
+  }
+  const message = buildMessage(roles.length, roles);
   if (message) {
     if (args.has("--dry-run")) console.log(JSON.stringify(message));
     else console.log(`sent with ${notify(message, url)}: ${message.subtitle}`);
   }
-  if (!args.has("--dry-run")) writeFileSync(statePath, JSON.stringify({ lastTimestamp: newest }));
+  save(next);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
