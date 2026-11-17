@@ -7,6 +7,7 @@ import { pipelineTab } from "@/lib/pipeline-navigation.mjs";
 import { scorePosting } from "@/lib/core/inbox-rank.mjs";
 import { applyInboxFit, loadFitTargets } from "@/lib/inbox-fit-profile.mjs";
 import { readScanRuns, scanSelectorData } from "@/lib/scan-runs";
+import { locationKeys } from "@/lib/location-geo.mjs";
 
 export const dynamic = "force-dynamic"; // always read fresh local files
 
@@ -19,7 +20,7 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
   const applications = await withCloseDates(summary.applications);
   const { inbox } = summary;
   const pending = pendingInbox(inbox);
-  const fitted = onInbox ? withInboxFit(pending) : null;
+  const fitted = onInbox ? withInboxFit(pending.map((job) => ({ ...job, locationKeys: locationKeys(job.location ?? "") }))) : null;
   const scans = onInbox ? scanSelectorData(readScanRuns()) : null;
   const trackerShape = readTrackerShape();
   // Tracker row numbers whose tailored CV is indexed (data/pdf-index.tsv) AND on

@@ -99,7 +99,7 @@ export function FacetChips({
         <input
           value={locQ}
           onChange={(e) => setLocQ(e.target.value)}
-          placeholder="location…"
+          placeholder="Location or country"
           className="w-28 shrink-0 rounded-full border border-border bg-surface/40 px-3 text-xs outline-none transition-colors placeholder:text-faint focus:border-brand/40 max-sm:min-h-[44px] py-1"
         />
 
