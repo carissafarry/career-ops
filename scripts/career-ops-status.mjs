@@ -110,7 +110,7 @@ async function main() {
     line("⚠", "Worker scan belum pernah memeriksa.");
   }
 
-  const jobs = jobsFrom(read(store));
+  const jobs = jobsFrom(read(store))?.filter((job) => job.status !== "deleted") ?? null;
   if (jobs === null) line("⚠", "File pekerjaan terjadwal tidak terbaca.");
   else if (jobs.length === 0) line("⚠", "Belum ada pekerjaan scan terjadwal. Buat satu di menu Scheduled scans.");
   else {
