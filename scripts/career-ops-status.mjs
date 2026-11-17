@@ -117,8 +117,9 @@ async function main() {
     line("✓", `${jobs.length} pekerjaan scan terjadwal:`);
     for (const job of jobs) {
       const label = job.name || job.id || "(tanpa nama)";
-      const on = job.enabled === false ? "mati" : "aktif";
-      out.push(`    · ${label} (${on})`);
+      const on = job.status === "active" || job.status === undefined ? "aktif" : job.status === "paused" ? "dijeda" : String(job.status);
+      const next = job.nextRunAt && on === "aktif" ? `, berikutnya ${new Date(job.nextRunAt).toLocaleString("id-ID")}` : "";
+      out.push(`    · ${label} (${on}${next})`);
     }
   }
 
