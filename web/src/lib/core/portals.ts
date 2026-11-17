@@ -42,15 +42,27 @@ export function writeTempPortals(f: FilterLists): string {
   // Keep it in ad-hoc scans too; malformed config must not disable the guard.
   let text = serializePortals(f);
   let policy: unknown;
+  // Rules that read the job description. The filter chips cannot express them, so
+  // they come from portals.yml as written (leadership phrases, country eligibility).
+  const carried: Record<string, unknown> = {};
   try {
     const parsed = yaml.load(fs.readFileSync(path.join(careerOpsRoot(), "portals.yml"), "utf8"));
     policy = workplacePolicyConfig(parsed);
+    if (parsed && typeof parsed === "object") {
+      for (const key of ["content_filter", "country_eligibility_filter"]) {
+        const value = (parsed as Record<string, unknown>)[key];
+        if (value && typeof value === "object") carried[key] = value;
+      }
+    }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
-  if (policy !== undefined) {
+  if (policy !== undefined || Object.keys(carried).length > 0) {
     const overlay = (yaml.load(text) || {}) as Record<string, unknown>;
-    overlay.location_filter = { ...(overlay.location_filter as Record<string, unknown> || {}), workplace_policy: policy };
+    if (policy !== undefined) {
+      overlay.location_filter = { ...(overlay.location_filter as Record<string, unknown> || {}), workplace_policy: policy };
+    }
+    Object.assign(overlay, carried);
     text = yaml.dump(overlay, { noRefs: true, lineWidth: 120 });
   }
   fs.writeFileSync(file, text, "utf8");

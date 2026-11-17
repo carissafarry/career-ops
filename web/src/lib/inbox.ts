@@ -21,6 +21,11 @@ export function sourceFromUrl(url: string): AtsSource | null {
   if (domainIs("lever.co")) return "lever";
   if (domainIs("ashbyhq.com")) return "ashby";
   if (domainIs("myworkdayjobs.com") || domainIs("workday.com")) return "workday";
+  if (domainIs("icims.com")) return "icims";
+  if (domainIs("bamboohr.com")) return "bamboohr";
+  if (domainIs("paylocity.com")) return "paylocity";
+  if (domainIs("join.com")) return "join";
+  if (domainIs("workable.com")) return "workable";
   return null;
 }
 

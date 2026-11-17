@@ -7,13 +7,22 @@
 export type EmployerSource = "tencent" | "bytedance" | "meituan";
 export type DiscoverySource = AtsSource | EmployerSource;
 export type EmployerScanOutcome = { state: "complete" | "partial" | "failed"; message: string };
-export type AtsSource = "greenhouse" | "lever" | "ashby" | "workday";
-export const ATS_SOURCES: AtsSource[] = ["greenhouse", "lever", "ashby", "workday"];
+export type AtsSource = "greenhouse" | "lever" | "ashby" | "workday" | "icims" | "bamboohr" | "paylocity" | "join" | "workable";
+// Every platform scan-ats-full.mjs can walk. The first four are the original set.
+export const ATS_SOURCES: AtsSource[] = ["greenhouse", "lever", "ashby", "workday", "icims", "bamboohr", "paylocity", "join", "workable"];
+// Selected when Explore opens. Workable is left out: its feed is one very large
+// download (about 140 MB compressed) whatever the company limit is, so it stays opt-in.
+export const DEFAULT_ATS: AtsSource[] = ATS_SOURCES.filter((a) => a !== "workable");
 export const ATS_LABEL: Record<AtsSource, string> = {
   greenhouse: "Greenhouse",
   lever: "Lever",
   ashby: "Ashby",
   workday: "Workday",
+  icims: "iCIMS",
+  bamboohr: "BambooHR",
+  paylocity: "Paylocity",
+  join: "Join",
+  workable: "Workable",
 };
 
 /** The full UI filter state. The keyword/location lists mirror scan.mjs's
@@ -41,7 +50,7 @@ export const DEFAULT_FILTERS: ExploreFilters = {
   blockHard: [],
   alwaysAllow: [],
   sinceDays: 7,
-  ats: [...ATS_SOURCES],
+  ats: [...DEFAULT_ATS],
   limitPerAts: 150,
 };
 
@@ -130,11 +139,11 @@ function clampNum(v: unknown, lo: number, hi: number, fallback: number): number 
 }
 
 function cleanAts(v: unknown): AtsSource[] {
-  if (!Array.isArray(v)) return [...ATS_SOURCES];
+  if (!Array.isArray(v)) return [...DEFAULT_ATS];
   const out = v
     .map((a) => String(a).toLowerCase())
     .filter((a): a is AtsSource => (ATS_SOURCES as string[]).includes(a));
-  return out.length ? Array.from(new Set(out)) : [...ATS_SOURCES];
+  return out.length ? Array.from(new Set(out)) : [...DEFAULT_ATS];
 }
 
 /** Apply a (possibly partial) action/assistant patch onto a base. The assistant
@@ -187,7 +196,7 @@ export function filtersToParams(f: ExploreFilters): string {
   if (f.blockHard.length) sp.set("hardno", f.blockHard.join(","));
   if (f.alwaysAllow.length) sp.set("home", f.alwaysAllow.join(","));
   if (f.sinceDays !== DEFAULT_FILTERS.sinceDays) sp.set("since", String(f.sinceDays));
-  if (f.ats.length !== ATS_SOURCES.length) sp.set("ats", f.ats.join(","));
+  if (f.ats.length !== DEFAULT_ATS.length || DEFAULT_ATS.some((a) => !f.ats.includes(a))) sp.set("ats", f.ats.join(","));
   if (f.limitPerAts !== DEFAULT_FILTERS.limitPerAts) sp.set("limit", String(f.limitPerAts));
   return sp.toString();
 }
