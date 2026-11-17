@@ -63,6 +63,8 @@ export type DiscoveredOffer = {
   company: string;
   title: string;
   location: string;
+  /** Lowercase search text for the location filter: the place, its country and spellings. Set on the server. */
+  locationKeys?: string;
   /** YYYY-MM-DD, or "" when the engine reported n/a (AI offers always "") */
   postedAt: string;
   /** Provider evidence carried through review for the conditional Inbox gate. */

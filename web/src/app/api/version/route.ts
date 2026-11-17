@@ -25,7 +25,17 @@ function readVersion(): string {
   return "";
 }
 
-function shortSha(): Promise<string> {
+// The commit id only changes when someone commits, so asking git on every request
+// (a new process each time) is wasted work. Reuse the answer for a minute.
+let shaCache: { at: number; value: string } | null = null;
+async function shortSha(): Promise<string> {
+  if (shaCache && Date.now() - shaCache.at < 60_000) return shaCache.value;
+  const value = await readShortSha();
+  shaCache = { at: Date.now(), value };
+  return value;
+}
+
+function readShortSha(): Promise<string> {
   // execFile with an argv array, never a shell string: the argument list is
   // fixed here, but the web layer does not hand a shell a command line at all
   // (see api/doctor/route.ts). windowsHide: a stale inherited console kills

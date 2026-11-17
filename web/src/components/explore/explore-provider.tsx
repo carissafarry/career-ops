@@ -371,7 +371,7 @@ export function ExploreProvider({ children }: { children: React.ReactNode }) {
       // A finite ceiling, not `all`: explorer-view renders every offer it gets,
       // so an unbounded list would be an unbounded DOM. `count` below stays the
       // complete total, which is what the header actually reports.
-      const r = await fetch(`/api/whats-new?limit=${MAX_OFFER_LIMIT}`);
+      const r = await fetch(`/api/whats-new?limit=${MAX_OFFER_LIMIT}&groups=1`);
       if (!runs.current.owns(run)) return;
       if (!r.ok) {
         setError(`Couldn't load fresh matches (${r.status}).`);

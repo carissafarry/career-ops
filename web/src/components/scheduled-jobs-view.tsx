@@ -23,6 +23,7 @@ import { JobCard } from "./scheduled-scans/job-card";
 import { RunHistoryDrawer } from "./scheduled-scans/run-history-drawer";
 import type { ScheduledJob, JobRun } from "@/lib/scheduled-jobs";
 import { updateScheduledJobRequest } from "@/lib/scheduled-job-client.mjs";
+import { sharedGet } from "@/lib/shared-fetch";
 import { scheduledScansBody } from "@/lib/scheduled-scans-phase.mjs";
 import { isSchedulerStatusPayload } from "@/lib/scheduled-scheduler-status.mjs";
 
@@ -68,8 +69,8 @@ export function ScheduledJobsView() {
     setError(null);
     try {
       const [jobsResponse, schedulerResponse] = await Promise.all([
-        fetch("/api/scheduled-jobs", { cache: "no-store" }),
-        fetch("/api/scheduler", { cache: "no-store" }),
+        sharedGet("/api/scheduled-jobs", { cache: "no-store" }),
+        sharedGet("/api/scheduler", { cache: "no-store" }),
       ]);
       const resJobs = await jobsResponse.json().catch(() => ({}));
       const resScheduler = await schedulerResponse.json().catch(() => null);

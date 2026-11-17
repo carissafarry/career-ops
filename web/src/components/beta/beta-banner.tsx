@@ -5,6 +5,7 @@ import { Bug, X, ShieldCheck, ThumbsUp, Search, Loader2 } from "lucide-react";
 import { collect, fingerprint, issueBody, issueUrl, type Diag } from "@/lib/report/report";
 import { searchIssues } from "@/lib/beta/issue-search.mjs";
 import { Modal } from "@/components/ui/modal";
+import { sharedGet } from "@/lib/shared-fetch";
 import "@/lib/report/logbuf"; // install the client error ring-buffer (side-effect)
 
 type SimilarIssue = { number: number; title: string; url: string };
@@ -56,7 +57,7 @@ export function BetaBanner() {
   };
 
   useEffect(() => {
-    fetch("/api/version")
+    sharedGet("/api/version")
       .then((r) => r.json())
       .then((d) => {
         if (d?.channel && d.channel !== "stable") setMeta(d);

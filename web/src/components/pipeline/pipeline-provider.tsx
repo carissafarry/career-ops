@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { Application, InboxJob } from "@/lib/career-ops";
+import { sharedGet } from "@/lib/shared-fetch";
 
 // A thin client mirror of the pipeline so BOTH the pages and the assistant
 // console (a different subtree) can read inbox/applications. Hydrated once from
@@ -29,7 +30,7 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
 
   const refetch = useCallback(() => {
     setLoading(true);
-    fetch("/api/pipeline")
+    sharedGet("/api/pipeline")
       .then((r) => r.json())
       .then((d) => {
         setInbox(Array.isArray(d.inbox) ? d.inbox : []);

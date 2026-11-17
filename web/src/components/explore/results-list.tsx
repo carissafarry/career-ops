@@ -1,9 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Plus, ArrowUpDown, ChevronDown, Check, LayoutGrid, List } from "lucide-react";
+import { Plus, ArrowUpDown, ChevronDown, Check, LayoutGrid, List } from "lucide-react";
 import { cn } from "@/lib/cn";
-import type { DiscoveredOffer } from "@/lib/explore";
+import { ATS_SOURCES, type AtsSource, type DiscoveredOffer } from "@/lib/explore";
+import { SENIORITY_ORDER, daysSince, seniorityFromTitle, sourceFromUrl, type Seniority } from "@/lib/inbox";
+import { locationMatches } from "@/lib/location-facet.mjs";
+import { FacetChips } from "@/components/inbox/facet-chips";
 import { CHINA_SOURCES } from "@/lib/employer-preset.mjs";
 import {
   DEFAULT_SORT,
@@ -45,6 +48,45 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
   const sortRef = useRef<HTMLDivElement>(null);
   const sortTriggerRef = useRef<HTMLButtonElement>(null);
 
+  // Same facets as the Pipeline inbox: how recent, platform, level, location or country.
+  // Roles already in the pipeline are hidden unless the user asks to include them.
+  const [within, setWithin] = useState<number | null>(null);
+  const [sources, setSources] = useState<Set<AtsSource>>(() => new Set());
+  const [seniorities, setSeniorities] = useState<Set<Seniority>>(() => new Set());
+  const [locQ, setLocQ] = useState("");
+  const [includePipeline, setIncludePipeline] = useState(false);
+  const now = useMemo(() => Date.now(), []);
+  const tagged = useMemo(
+    () => offers.map((offer) => ({ offer, source: sourceFromUrl(offer.url), seniority: seniorityFromTitle(offer.title), age: daysSince(offer.postedAt, now) })),
+    [offers, now],
+  );
+  const inPipelineCount = useMemo(() => offers.filter((o) => o.inPipeline).length, [offers]);
+  const availSources = useMemo(() => {
+    const present = new Set<AtsSource>();
+    for (const t of tagged) if (t.source) present.add(t.source);
+    return ATS_SOURCES.filter((s) => present.has(s));
+  }, [tagged]);
+  const availSeniorities = useMemo(() => {
+    const present = new Set<Seniority>();
+    for (const t of tagged) if (t.seniority) present.add(t.seniority);
+    return SENIORITY_ORDER.filter((s) => present.has(s));
+  }, [tagged]);
+  const facetFiltered = useMemo(
+    () =>
+      tagged
+        .filter((t) => {
+          if (!includePipeline && t.offer.inPipeline) return false;
+          if (within != null && (t.age == null || t.age > within)) return false;
+          if (sources.size && (!t.source || !sources.has(t.source))) return false;
+          if (seniorities.size && (!t.seniority || !seniorities.has(t.seniority))) return false;
+          if (locQ.trim() && !locationMatches(t.offer.locationKeys || t.offer.location || "", locQ)) return false;
+          return true;
+        })
+        .map((t) => t.offer),
+    [tagged, includePipeline, within, sources, seniorities, locQ],
+  );
+  const facetActive = within != null || sources.size > 0 || seniorities.size > 0 || locQ.trim() !== "";
+
   // Fit bands are free title-vs-profile estimates on scan offers only; the fit
   // controls stay out of the way when nothing in this result set carries one.
   const bandCounts = useMemo(() => countBands(offers), [offers]);
@@ -53,7 +95,7 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
   // A choice made earlier (e.g. Fit) falls back when a later run has nothing to apply it to.
   const sort = useMemo(() => normalizeSort(sortSpec, sortKeys), [sortSpec, sortKeys]);
 
-  const view = useMemo(() => applyResultsView(offers, { query: q, hiddenBands, sort }), [offers, q, hiddenBands, sort]);
+  const view = useMemo(() => applyResultsView(facetFiltered, { query: q, hiddenBands, sort }), [facetFiltered, q, hiddenBands, sort]);
 
   // "Add all" acts on what is on screen, so a filter can't bulk-add rows the user can't see.
   const addable = view.filter((o) => !o.inPipeline && !o.evaluatedN && !added.has(o.url));
@@ -79,6 +121,25 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
 
   return (
     <div className="space-y-4">
+      <FacetChips
+        within={within}
+        setWithin={setWithin}
+        sources={sources}
+        toggleSource={(s) => setSources((set) => { const next = new Set(set); if (next.has(s)) next.delete(s); else next.add(s); return next; })}
+        seniorities={seniorities}
+        toggleSeniority={(s) => setSeniorities((set) => { const next = new Set(set); if (next.has(s)) next.delete(s); else next.add(s); return next; })}
+        locQ={locQ}
+        setLocQ={setLocQ}
+        kw={q}
+        setKw={setQ}
+        availSources={availSources}
+        availSeniorities={availSeniorities}
+        resultCount={view.length}
+        totalCount={includePipeline ? offers.length : offers.length - inPipelineCount}
+        anyActive={facetActive || q.trim() !== ""}
+        onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setQ(""); }}
+      />
+
       <div className="flex flex-wrap items-center gap-3">
         <div>
           <p className="text-sm text-foreground">
@@ -95,15 +156,21 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
         </div>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-1.5">
-            <Search className="size-3.5 text-faint" />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Filter results…"
-              className="w-32 bg-transparent text-[14px] outline-none placeholder:text-faint"
-            />
-          </div>
+          {inPipelineCount > 0 && (
+            <button
+              type="button"
+              aria-pressed={includePipeline}
+              onClick={() => setIncludePipeline((v) => !v)}
+              title={includePipeline ? "Hide the roles that are already in your pipeline" : "Also show the roles that are already in your pipeline"}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                includePipeline ? "border-brand/40 bg-brand-soft text-brand-text" : "border-border bg-surface text-muted hover:text-foreground",
+              )}
+            >
+              {includePipeline && <Check className="size-3.5" strokeWidth={3} />}
+              {includePipeline ? `Including ${inPipelineCount} already in pipeline` : `Show ${inPipelineCount} already in pipeline`}
+            </button>
+          )}
 
           {hasFit && (
             <div role="group" aria-label="Filter by fit" className={segmented}>
@@ -218,9 +285,13 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
         ))}
       </div>
 
-      {view.length === 0 && (q.trim() || hiddenBands.size > 0 || !running) && (
+      {view.length === 0 && (q.trim() || facetActive || hiddenBands.size > 0 || inPipelineCount > 0 || !running) && (
         <p className="py-10 text-center text-sm text-faint">
-          {q.trim() || hiddenBands.size === 0 ? `No results match “${q}”.` : "No results in the selected fit bands."}
+          {hiddenBands.size > 0 && !q.trim() && !facetActive
+            ? "No results in the selected fit bands."
+            : !includePipeline && inPipelineCount > 0 && offers.length === inPipelineCount && !q.trim() && !facetActive
+              ? `All ${inPipelineCount} roles are already in your pipeline. Use “Show ${inPipelineCount} already in pipeline” to see them.`
+              : "No results match these filters."}
         </p>
       )}
     </div>

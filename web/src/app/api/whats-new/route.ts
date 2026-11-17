@@ -1,4 +1,4 @@
-import { careerOpsRoot, readApplications, readLinkedReport, readScanHistoryLines } from "@/lib/career-ops";
+import { careerOpsRoot, readApplications, readInbox, readLinkedReport, readScanHistoryLines } from "@/lib/career-ops";
 import { getNormalizeTextKey } from "@/lib/core/text-key";
 import { getAggregatorRule } from "@/lib/core/aggregator-id";
 import { evaluatedKeys, isEvaluated } from "@/lib/whats-new-suppression.mjs";
@@ -7,6 +7,7 @@ import { collectWhatsNew, resolveOfferLimit } from "@/lib/whats-new.mjs";
 import { rankOffers } from "@/lib/core/inbox-rank.mjs";
 import { loadFitTargets } from "@/lib/inbox-fit-profile.mjs";
 import { loadWorkplacePolicy } from "@/lib/core/workplace-policy.mjs";
+import { locationKeys } from "@/lib/location-geo.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,7 +81,24 @@ export async function GET(req: Request) {
       toOffer,
       offerLimit: Number.POSITIVE_INFINITY,
     });
-    const offers = rankOffers(pool, loadFitTargets(), offerLimit);
+    const targets = loadFitTargets();
+    let ranked: DiscoveredOffer[];
+    if (searchParams.get("groups") === "1") {
+      // Explore hides what is already in the pipeline by default. If the ceiling were
+      // applied first, the best roles (the ones the pipeline already holds) would fill
+      // it and push every role not yet in the pipeline out of view. So each group gets
+      // its own ceiling: roles not in the pipeline first, then the ones that are.
+      const inbox = new Set(readInbox().filter((job) => !job.done).map((job) => job.url));
+      const fresh = pool.filter((o: { url: string }) => !inbox.has(o.url));
+      const held = pool.filter((o: { url: string }) => inbox.has(o.url));
+      ranked = [
+        ...(rankOffers(fresh, targets, offerLimit) as DiscoveredOffer[]),
+        ...(rankOffers(held, targets, offerLimit) as DiscoveredOffer[]),
+      ];
+    } else {
+      ranked = rankOffers(pool, targets, offerLimit) as DiscoveredOffer[];
+    }
+    const offers = ranked.map((o) => ({ ...o, locationKeys: locationKeys(o.location ?? "") }));
     return Response.json({ offers, count });
   } catch (err) {
     return Response.json(

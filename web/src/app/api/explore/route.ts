@@ -8,6 +8,7 @@ import { rootScript } from "@/lib/career-ops";
 import { parseExplorePatch, DEFAULT_FILTERS, type DiscoveredOffer, type ScanEvent } from "@/lib/explore";
 import { scannerMissingBody, SCANNER_MISSING_STATUS } from "@/lib/explore-error.mjs";
 import { readJsonObject } from "@/lib/json-body";
+import { locationKeys } from "@/lib/location-geo.mjs";
 
 // Discovery is HTTP-bound across many ATS boards; give it room. It is FREE —
 // zero LLM tokens (the scanner only does HTTP + JSON, and --dry-run writes nothing).
@@ -40,7 +41,14 @@ export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      const send = (obj: unknown) => {
+      // The results filter by location or country, which needs the city dataset that
+      // lives on the server, so each offer carries its search text with it.
+      const withKeys = (o: DiscoveredOffer): DiscoveredOffer => ({ ...o, locationKeys: locationKeys(o.location ?? "") });
+      const send = (raw: unknown) => {
+        let obj = raw;
+        const e = raw as { kind?: string; offer?: DiscoveredOffer; offers?: DiscoveredOffer[] };
+        if (e?.kind === "offer" && e.offer) obj = { ...e, offer: withKeys(e.offer) };
+        else if (e?.kind === "done" && Array.isArray(e.offers)) obj = { ...e, offers: e.offers.map(withKeys) };
         try {
           controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
         } catch {
