@@ -79,7 +79,8 @@ import join, { parseCompanySitemap } from './providers/join.mjs';
 import { loadWorkableFeed, WORKABLE_FEED_URL } from './providers/workable.mjs';
 import { openProviderIdCache, PROVIDER_ID_CACHE_DIR } from './provider-id-cache.mjs';
 import { decodeEntities } from './providers/_html-entities.mjs';
-import { buildTitleFilter, buildTitleFilterOverrides, buildTitleFilterWithOverrides, buildLocationFilter, buildContentFilterOrExit, matchedTitleKeywords, loadSeenUrls, scanHistoryPolicy, seenJobKey, appendToPipeline, appendToScanHistory, findBlacklistEntry, loadBlacklist, parseSinceDays, BROWSER_PROCESS_ENV, DATA_ROOT as SCAN_DATA_ROOT, PORTALS_PATH, PIPELINE_PATH, SCAN_HISTORY_PATH } from './scan.mjs';
+import { buildTitleFilter, buildTitleFilterOverrides, buildTitleFilterWithOverrides, buildLocationFilter, buildContentFilterOrExit, matchedTitleKeywords, loadSeenUrls, scanHistoryPolicy, seenJobKey, appendToPipeline, appendToScanHistory, findBlacklistEntry, loadBlacklist, parseSinceDays, BROWSER_PROCESS_ENV, DATA_ROOT as SCAN_DATA_ROOT, PORTALS_PATH, PIPELINE_PATH, SCAN_HISTORY_PATH, loadCandidateYears } from './scan.mjs';
+import { resolveExperienceFilter, applyExperienceFilter } from './jd-years.mjs';
 import { localToday } from './lib/local-today.mjs';
 import { printScanSummaryHeader } from './lib/scan-summary-marker.mjs';
 import { SEED_SOURCES, toPortalEntries } from './seeds/vc-portfolios.mjs';
@@ -2505,6 +2506,24 @@ async function main() {
   const blacklistResult = filterBlacklistedOffers(newOffers, blacklist, { includeBlacklisted: opts.includeBlacklisted });
   let offers = blacklistResult.offers;
   if (offers.length && opts.liveness) offers = await filterLive(offers);
+  // Stated years of experience (jd-years.mjs): the same filter scan.mjs applies to its
+  // new offers, so a full sweep and a portals scan reject the same postings. It reads
+  // one JD per remaining offer, so it runs last, after every cheaper cut.
+  let experienceDropped = 0;
+  if (offers.length) {
+    const experienceBlock = config?.experience_filter;
+    const needsProfileYears = experienceBlock !== null && typeof experienceBlock === 'object'
+      && !Array.isArray(experienceBlock) && (experienceBlock.enabled === undefined || experienceBlock.enabled === true)
+      && experienceBlock.years == null;
+    const experienceFilter = resolveExperienceFilter(experienceBlock, needsProfileYears ? loadCandidateYears() : undefined);
+    if (!experienceFilter.enabled && experienceFilter.reason) console.warn(`\u26a0\ufe0f  ${experienceFilter.reason}`);
+    if (experienceFilter.enabled) {
+      log(`\nReading stated years of experience for ${offers.length} offer(s)...`);
+      const { kept, dropped } = await applyExperienceFilter(offers, experienceFilter);
+      offers = kept;
+      experienceDropped = dropped.length;
+    }
+  }
   offers.sort((a, b) => (b.postedAt || 0) - (a.postedAt || 0));
 
   printScanSummaryHeader('Reverse ATS Scan', date, log);
@@ -2541,6 +2560,7 @@ async function main() {
     }
   }
   if (droppedContent) log(`Content-filtered:   ${droppedContent}`);
+  if (experienceDropped) log(`Experience-filtered: ${experienceDropped} (the JD's lowest stated requirement is above your band)`);
   log(`New matches:        ${offers.length}`);
 
   if (offers.length) {

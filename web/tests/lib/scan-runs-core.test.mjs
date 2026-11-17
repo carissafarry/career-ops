@@ -50,6 +50,27 @@ test("full-scan URLs are grouped on their own and kept out of the run ordering",
   assert.deepEqual(filtered[1].postings.map((p) => p.url), ["https://a/1", "https://a/2"]);
 });
 
+test("a full-scan row can carry its own details and posted date, with no history row at all", () => {
+  const origin = [
+    "url\tscan\tstarted_at\tcompany\trole\tlocation\tposted_at",
+    "https://f/1\tfull-x\t2026-11-17T12:06:00.000Z\tBigCo\tPlatform Engineer\tRemote\t2026-11-16",
+    "https://f/2\tfull-x\t2026-11-17T12:06:00.000Z\tOtherCo\tBackend Developer\t\t",
+  ].join("\n");
+  const run = buildScanRuns({ originTsv: origin }).find((r) => r.id === "full-x");
+  assert.equal(run.kind, "full");
+  assert.equal(run.added, 2);
+  assert.deepEqual(run.postings.map((p) => [p.company, p.role, p.postedAt]), [
+    ["BigCo", "Platform Engineer", "2026-11-16"],
+    ["OtherCo", "Backend Developer", ""],
+  ]);
+});
+
+test("the posted date of a history row is read from its ninth column", () => {
+  const history = ["https://a/1", "2026-11-17", "p", "Backend", "Co", "added", "Jakarta", "", "2026-11-15"].join("\t");
+  const runs = buildScanRuns({ runsTsv: RUNS, historyTsv: history });
+  assert.equal(runs.flatMap((r) => r.postings)[0].postedAt, "2026-11-15");
+});
+
 test("fewer history rows than the logged total never throws", () => {
   const runs = buildScanRuns({ runsTsv: RUNS, historyTsv: row("https://only/1", "added") });
   assert.equal(runs.length, 2);

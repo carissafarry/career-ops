@@ -3,7 +3,7 @@ import path from "node:path";
 import { careerOpsRoot } from "@/lib/career-ops";
 import { buildScanRuns, scanIdByUrl } from "@/lib/scan-runs-core.mjs";
 
-export type ScanPosting = { url: string; company: string; role: string; location: string; firstSeen: string };
+export type ScanPosting = { url: string; company: string; role: string; location: string; firstSeen: string; postedAt?: string };
 export type ScanRun = {
   id: string;
   kind: "filtered" | "full";

@@ -12,7 +12,7 @@
 const splitLines = (text) => String(text ?? "").split(/\r?\n/).filter((line) => line.length > 0);
 const toRows = (text) => splitLines(text).map((line) => line.split("\t"));
 
-/** @typedef {{url: string, company: string, role: string, location: string, firstSeen: string}} ScanPosting */
+/** @typedef {{url: string, company: string, role: string, location: string, firstSeen: string, postedAt?: string}} ScanPosting */
 /** @typedef {{id: string, kind: "filtered" | "full", startedAt: string, found: number, added: number, filteredTitle: number, dupes: number, postings: ScanPosting[]}} ScanRun */
 
 function columnIndex(header) {
@@ -28,6 +28,7 @@ function historyPosting(cols) {
     role: cols[3] ?? "",
     company: cols[4] ?? "",
     location: cols[6] ?? "",
+    postedAt: /^\d{4}-\d{2}-\d{2}/.test(cols[8] ?? "") ? cols[8].slice(0, 10) : "",
   };
 }
 
@@ -100,23 +101,27 @@ export function buildScanRuns({ runsTsv = "", historyTsv = "", originTsv = "", p
     cursor += run.added;
   }
 
+  // A full-scan row may carry its own details (company, role, location, posted date),
+  // for a scan whose roles were never written to the history. Without them, the
+  // details come from the history row of the same URL.
   const fullById = new Map();
   for (const cols of originRows) {
-    const [url, scanId, startedAt = ""] = cols;
+    const [url, scanId, startedAt = "", company = "", role = "", location = "", postedAt = ""] = cols;
     if (!url || !scanId) continue;
     let run = fullById.get(scanId);
     if (!run) {
       run = { id: scanId, kind: "full", startedAt, found: 0, added: 0, filteredTitle: 0, dupes: 0, postings: [] };
       fullById.set(scanId, run);
     }
-    run.postings.push({ url, company: "", role: "", location: "", firstSeen: "" });
+    run.postings.push({ url, company, role, location, firstSeen: "", postedAt: /^\d{4}-\d{2}-\d{2}$/.test(postedAt) ? postedAt : "" });
     run.added = run.postings.length;
   }
   if (fullById.size) {
-    // Fill company, role and location from the history row of each full-scan URL.
     const byUrl = new Map();
-    for (const cols of toRows(historyTsv)) if (cols[5] === "added" && fullUrls.has(cols[0])) byUrl.set(cols[0], historyPosting(cols));
-    for (const run of fullById.values()) run.postings = run.postings.map((p) => byUrl.get(p.url) ?? p);
+    for (const cols of toRows(historyTsv)) if (cols[5] === "added" && fullUrls.has(cols[0]) && !byUrl.has(cols[0])) byUrl.set(cols[0], historyPosting(cols));
+    for (const run of fullById.values()) {
+      run.postings = run.postings.map((p) => (p.company || p.role ? p : byUrl.get(p.url) ?? p));
+    }
   }
 
   return [...filtered, ...fullById.values()].sort((a, b) => (a.startedAt < b.startedAt ? 1 : a.startedAt > b.startedAt ? -1 : 0));
