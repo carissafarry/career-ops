@@ -94,6 +94,10 @@ export function seedExploreFilters(): { filters: ExploreFilters; seededFrom: str
     filters.block = listFrom(lf.block);
     filters.alwaysAllow = listFrom(lf.always_allow);
     filters.blockHard = listFrom(lf.block_hard);
+    // The posting-age window follows the scan's own setting, so Explore and the scan
+    // look back the same number of days.
+    const maxAge = Number(portals.max_posting_age_days);
+    if (Number.isFinite(maxAge) && maxAge > 0) filters.sinceDays = Math.round(maxAge);
     if (filters.positive.length || filters.allow.length || filters.block.length || filters.blockHard.length) seededFrom.push("portals.yml");
   }
 
