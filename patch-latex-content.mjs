@@ -16,7 +16,7 @@
 import { readFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import { resolve, dirname } from 'path';
-import { applyPatches, buildManifest } from './lib/latex-content.mjs';
+import { applyPatches, buildManifest, detectFamily } from './lib/latex-content.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
 import { replaceUserFile } from './tracker-utils.mjs';
 
@@ -85,7 +85,16 @@ async function main() {
     process.exit(1);
   }
 
-  const patched = applyPatches(tex, patches, slots);
+  let patched;
+  try {
+    // Use the current extraction for editability, not the patches file's own claim.
+    const editable = new Map(currentSlots.map(c => [c.id, c.editable]));
+    const withEditable = slots.map(s => ({ ...s, editable: editable.get(s.id) }));
+    patched = applyPatches(tex, patches, withEditable, { family: detectFamily(tex) });
+  } catch (err) {
+    console.error(err.message);
+    process.exit(1);
+  }
   const outDir = dirname(absOutput);
   if (!existsSync(outDir)) {
     await mkdir(outDir, { recursive: true });

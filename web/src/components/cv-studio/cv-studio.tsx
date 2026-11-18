@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, Check, FileText, Loader2, RotateCcw, Undo2 } from "lucide-react";
+import { ArrowLeft, Check, FileCode2, FileText, Loader2, RotateCcw, Undo2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { BackLink } from "@/components/back-link";
 import { CvPdfFileActions } from "@/components/cv-pdf-file-actions";
@@ -13,9 +13,12 @@ import { editSaveStatus, inflightEdits, ownsStatus, postWroteEdits, shouldPutAft
 import { SectionCard } from "./section-card";
 import { CvPreview } from "./cv-preview";
 import { CoverageMeter } from "./coverage-meter";
+import { LatexStudio, type LatexSlot } from "./latex-studio";
+import { btn } from "@/lib/action-styles";
+import { LatexCvButton } from "@/components/latex-cv-button";
 
 type Loaded = { ok: true; reportNum: string; company: string; file: string; tree: BlockTree; doc: StudioDoc; edits: StudioEdits; stale: boolean; hasBase: boolean; pdfExport?: { ok: false; error: string } | null };
-type LoadState = { kind: "loading" } | { kind: "error"; reason: string } | { kind: "ready"; data: Loaded };
+type LoadState = { kind: "latex"; slots: LatexSlot[] } | { kind: "loading" } | { kind: "error"; reason: string } | { kind: "ready"; data: Loaded };
 type SaveState =
   | { kind: "idle" }
   | { kind: "saving" }
@@ -37,16 +40,35 @@ export function CvStudio({ n }: { n: string }) {
   const listQuery = pipelineQuery(useSearchParams().toString());
   const reportHref = `/pipeline/${encodeURIComponent(n)}${listQuery ? `?${listQuery}` : ""}`;
   const [load, setLoad] = useState<LoadState>({ kind: "loading" });
+  const [reloads, setReloads] = useState(0);
+  // The candidate chose the HTML Studio although a LaTeX build exists; slots are kept to offer the way back.
+  const [html, setHtml] = useState<{ latexSlots: LatexSlot[] } | null>(null);
   useEffect(() => {
     let live = true;
-    fetch(`/api/cv-studio/${encodeURIComponent(n)}`)
-      .then(async (r) => (r.ok ? { kind: "ready" as const, data: (await r.json()) as Loaded } : { kind: "error" as const, reason: ((await r.json().catch(() => ({}))) as { error?: string }).error ?? "failed" }))
-      .catch(() => ({ kind: "error" as const, reason: "failed" }))
-      .then((s) => live && setLoad(s));
+    const open = async (): Promise<LoadState> => {
+      // A CV built from the candidate's own LaTeX file has no HTML to edit; it gets its own Studio.
+      try {
+        const latex = await fetch(`/api/latex-studio/${encodeURIComponent(n)}`);
+        if (latex.ok && !html) {
+          const body = (await latex.json()) as { slots?: LatexSlot[] };
+          if (body.slots) return { kind: "latex", slots: body.slots };
+        }
+      } catch {
+        /* fall through to the HTML Studio */
+      }
+      try {
+        const r = await fetch(`/api/cv-studio/${encodeURIComponent(n)}`);
+        if (r.ok) return { kind: "ready", data: (await r.json()) as Loaded };
+        return { kind: "error", reason: ((await r.json().catch(() => ({}))) as { error?: string }).error ?? "failed" };
+      } catch {
+        return { kind: "error", reason: "failed" };
+      }
+    };
+    void open().then((s) => live && setLoad(s));
     return () => {
       live = false;
     };
-  }, [n]);
+  }, [n, reloads]); // eslint-disable-line react-hooks/exhaustive-deps -- `html` only matters when a reload is requested
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
@@ -59,6 +81,24 @@ export function CvStudio({ n }: { n: string }) {
           <h1 className="font-display text-xl text-landing">{REASONS[load.reason]?.title ?? "The CV Studio could not open this CV"}</h1>
           <p className="mt-2 text-sm text-muted">{REASONS[load.reason]?.body ?? "Reload the page to try again."}</p>
         </div>
+      )}
+      {(load.kind === "ready" || load.kind === "error") && (
+        // Shown only when a LaTeX source is set (the button hides itself otherwise). Once built, the Studio reopens on the LaTeX slots.
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-surface px-4 py-3 text-sm text-muted empty:hidden">
+          {html && (
+            <button type="button" onClick={() => { setHtml(null); setLoad({ kind: "latex", slots: html.latexSlots }); }} className={btn}>
+              <FileCode2 className="size-3.5" /> Back to LaTeX editor
+            </button>
+          )}
+          <LatexCvButton n={n} onDone={() => { setHtml(null); setLoad({ kind: "loading" }); setReloads((r) => r + 1); }} />
+        </div>
+      )}
+      {load.kind === "latex" && (
+        <LatexStudio
+          n={n}
+          slots={load.slots}
+          onSwitchToHtml={() => { setHtml({ latexSlots: load.slots }); setLoad({ kind: "loading" }); setReloads((r) => r + 1); }}
+        />
       )}
       {load.kind === "ready" && <Studio n={n} data={load.data} />}
     </div>
