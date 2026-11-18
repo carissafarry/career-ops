@@ -23,9 +23,12 @@ import { buildPrompt, isShellSafeCompanyName } from "@/lib/run-prompts.mjs";
 import { isTruncatedJd, prefetchJd } from "@/lib/jd-prefetch.mjs";
 import { runCoreCli } from "@/lib/core-cli";
 import { parseCoverRequest } from "@/lib/cover-brief.mjs";
+import { parseRepair, userNotesText } from "@/lib/cv-instructions.mjs";
+import { readNotes } from "@/lib/cv-notes-store.mjs";
+import { saveCompanyResearch } from "@/lib/company-research-store.mjs";
 import { capabilitiesFor } from "@/lib/worker-capabilities.mjs";
 import { fencingReport, isCliAllowedForCapabilities } from "@/lib/cli-fencing.mjs";
-import { claudeCliArgs } from "@/lib/claude-invocation.mjs";
+import { claudeCliArgs, kindModel } from "@/lib/claude-invocation.mjs";
 import { resolveCvTemplate, resolveUserTemplatesDir } from "@/lib/core/cv-template.mjs";
 import { getProfilePath, profileRef } from "@/lib/core/profile-path.mjs";
 import { readPageFormatSetting, resolveRenderPageFormat, type PageFormatSetting } from "@/lib/core/page-format.mjs";
@@ -169,6 +172,12 @@ export async function POST(req: Request) {
     pdfPaths = pathsResult.paths;
   }
 
+  // The candidate's saved notes for this application (their own messages only; feedback replies never go back in).
+  const companyReport = kind === "company" && /^\d+$/.test(input) ? findReportFile(input) : null;
+  if (kind === "company" && !companyReport) {
+    return Response.json({ error: `No report #${input} found. Evaluate this posting first.` }, { status: 404 });
+  }
+  const cvNotes = kind === "pdf" && /^\d+$/.test(input) ? userNotesText(readNotes(careerOpsRoot(), input)) : null;
   const coverRequest = kind === "cover" ? parseCoverRequest({ input, brief, root: careerOpsRoot(), findReportFile }) : undefined;
   if (coverRequest && !coverRequest.ok) {
     return new Response(JSON.stringify({ error: coverRequest.error }), {
@@ -253,8 +262,10 @@ export async function POST(req: Request) {
       pageFormat,
       // The worker's cwd is the data root; modes, templates and scripts live in the checkout.
       codeRoot,
-      reportFile: pdfPaths?.reportFile ?? (coverRequest?.ok ? coverRequest.reportFile : undefined),
+      reportFile: pdfPaths?.reportFile ?? (coverRequest?.ok ? coverRequest.reportFile : undefined) ?? (companyReport ? path.relative(careerOpsRoot(), companyReport).split(path.sep).join("/") : undefined),
       coverBrief: coverRequest?.ok ? coverRequest.brief : undefined,
+      cvInstructions: cvNotes,
+      cvRepair: kind === "pdf" ? parseRepair(brief) : null,
       profile: profileRef(careerOpsRoot()),
       evaluationInstructions: instructionFile?.reference,
       prefetchedJd,
@@ -276,7 +287,7 @@ export async function POST(req: Request) {
     // stdout matches spec.parseEvent below; spec.args stays the plain-text argv the
     // envelope-parsing routes rely on.
     const buildArgs = (p: string) =>
-      isClaude ? claudeCliArgs({ kind, prompt: p }) : (spec.streamArgs ?? spec.args)(p);
+      isClaude ? claudeCliArgs({ kind, prompt: p, model: kindModel(kind) }) : (spec.streamArgs ?? spec.args)(p);
     // The prompt inlines the whole _profile.md (#4003), so it can outgrow the OS
     // command-line limit (ENAMETOOLONG on Windows). Every kind that reaches here
     // can Read (see TOOL_SCOPES), so an oversized prompt goes to a file under the
@@ -445,6 +456,7 @@ export async function POST(req: Request) {
       // cannot directly declare a gated outcome. Process integrity is checked
       // first at close, before this text can be treated as a terminal stop.
       let evaluationText = "";
+      let companyText = "";
       // While the agent emits the 15-25 KB <<cv-html>> envelope, cvFilter swallows
       // every byte, so the response stream goes completely silent for as long as
       // the model takes to write the CV — a minute or more. Nothing downstream can
@@ -455,6 +467,7 @@ export async function POST(req: Request) {
       // ignored by the client's switch, so this is safe for older tabs too.
       const sendAgentText = (text: string) => {
         if (kind === "evaluate") evaluationText += text;
+        if (kind === "company") companyText += text;
         const filter = cvFilter ?? reportFilter;
         const visible = filter ? filter.push(text) : text;
         if (visible) send({ type: "text", text: visible });
@@ -757,6 +770,11 @@ export async function POST(req: Request) {
           const detail = !sawError && stderrErrorSnippet ? ` (${stderrErrorSnippet})` : "";
           send({ type: "error", msg: `This run hit an error before finishing, so it isn't recorded as a confident result — re-run it to verify.${detail}`.slice(0, 200) });
         } else {
+          // Saved only after a clean finish, so a cut-off run never replaces an earlier report.
+          if (kind === "company" && !saveCompanyResearch(careerOpsRoot(), input, companyText)) {
+            send({ type: "error", msg: "The company research came back empty, so nothing was saved." });
+            return close();
+          }
           send({ type: "done", tokens: lastTokens, costUsd: lastCostUsd });
         }
         close();

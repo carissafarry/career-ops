@@ -7,6 +7,8 @@ import { reportNumberFor } from "@/lib/apply-checklist.mjs";
 import { readCvDiskState } from "@/lib/read-cv-disk";
 import { parseReport } from "@/lib/format";
 import { missingTrackedJob } from "@/lib/job-route.mjs";
+import { careerOpsRoot } from "@/lib/career-ops";
+import { readCompanyResearch } from "@/lib/company-research-store.mjs";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +32,7 @@ export default async function ReportPage({ params, searchParams }: {
   const reportNum = reportNumberFor(id, app, report?.file ?? null);
   const disk = await readCvDiskState(id, companyName, (app?.pdf ?? "").includes("✅"), reportNum);
   const pdfFileReady = disk.exists;
+  const research = readCompanyResearch(careerOpsRoot(), id);
   return (
     <ReportView
       id={id}
@@ -44,6 +47,7 @@ export default async function ReportPage({ params, searchParams }: {
       backHref={`/pipeline${query ? `?${query}` : ""}`}
       applyHref={`/pipeline/${encodeURIComponent(id)}/apply${query ? `?${query}` : ""}`}
       reportNum={reportNum}
+      companyResearch={research ? { markdown: research.markdown, at: research.at.toISOString() } : null}
     />
   );
 }

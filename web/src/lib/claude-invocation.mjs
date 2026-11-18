@@ -145,18 +145,38 @@ export function grantsWriteCapability(scope) {
 }
 
 /**
+ * The model alias a worker kind is pinned to, or null to use the CLI's own default.
+ *
+ * Only "company" is pinned: it reads many web pages, so the run is long and its
+ * cost is mostly input tokens, and a mid-size model does that job well. Set
+ * CAREER_OPS_COMPANY_MODEL to another alias (for example "haiku" or "opus") to
+ * change it, or to "inherit" to keep the CLI's default.
+ *
+ * @param {string} kind
+ * @param {Record<string, string | undefined>} [env]
+ * @returns {string | null}
+ */
+export function kindModel(kind, env = process.env) {
+  if (kind !== "company") return null;
+  const raw = (env.CAREER_OPS_COMPANY_MODEL ?? "sonnet").trim();
+  if (!raw || /^(inherit|default)$/i.test(raw)) return null;
+  return /^[A-Za-z0-9._-]{1,64}$/.test(raw) ? raw : null;
+}
+
+/**
  * The complete headless `claude` argv for a run.
  *
  * Assembled here, not in the route, so a guard can assert on the command line
  * that actually ships instead of on source text that can be rewritten around it.
  *
- * @param {{kind: string, prompt: string}} args
+ * @param {{kind: string, prompt: string, model?: string | null}} args
  * @returns {string[]}
  */
-export function claudeCliArgs({ kind, prompt }) {
+export function claudeCliArgs({ kind, prompt, model = null }) {
   const scope = toolScopeFor(kind);
   return [
     "-p", prompt,
+    ...(model ? ["--model", model] : []),
     "--output-format", "stream-json",
     "--verbose",
     "--include-partial-messages",
