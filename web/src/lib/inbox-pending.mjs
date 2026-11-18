@@ -22,6 +22,24 @@ export function reconcileInbox(inbox, applications) {
 }
 
 /**
+ * The posting URLs that count as "in the pipeline" on Explore and Today: a row still
+ * waiting in the inbox, or one a tracker row already covers. A row the user took out
+ * (checked off in pipeline.md, no tracker row) does not count, so it can be added again.
+ *
+ * @param {{ url: string, done: boolean }[]} inbox
+ * @param {{url?: string}[]} applications
+ * @returns {string[]}
+ */
+export function inPipelineUrls(inbox, applications) {
+  const tracked = new Set(applications
+    .map((app) => canonicalJobKey(readTrackerUrl(app.url)))
+    .filter(Boolean));
+  return inbox
+    .filter((job) => !job.done || tracked.has(canonicalJobKey(job.url)))
+    .map((job) => job.url);
+}
+
+/**
  * Pending inbox postings, deduped by URL (pipeline.md can list the same
  * posting twice), so the header count, the tab count and the triage list
  * agree on one number.

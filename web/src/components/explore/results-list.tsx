@@ -7,6 +7,7 @@ import { ATS_SOURCES, type AtsSource, type DiscoveredOffer } from "@/lib/explore
 import { SENIORITY_ORDER, daysSince, seniorityFromTitle, sourceFromUrl, type Seniority } from "@/lib/inbox";
 import { locationMatches } from "@/lib/location-facet.mjs";
 import { FacetChips } from "@/components/inbox/facet-chips";
+import { RemovedBar } from "./removed-bar";
 import { useSourceFilter } from "@/lib/source-exclusions";
 import { CHINA_SOURCES } from "@/lib/employer-preset.mjs";
 import {
@@ -38,7 +39,7 @@ const segmentOn = "bg-brand-soft text-brand-text";
 const segmentOff = "text-muted hover:text-foreground";
 
 export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
-  const { companiesScanned, partial, error, addToPipeline, added, mode, running } = useExplore();
+  const { companiesScanned, partial, error, addToPipeline, added, removed, mode, running } = useExplore();
   const isAi = mode === "ai";
   const employer = offers.some(o => CHINA_SOURCES.includes(o.source));
   const [q, setQ] = useState("");
@@ -55,7 +56,8 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
   const [sources, setSources] = useState<Set<AtsSource>>(() => new Set());
   const [seniorities, setSeniorities] = useState<Set<Seniority>>(() => new Set());
   const [locQ, setLocQ] = useState("");
-  const [includePipeline, setIncludePipeline] = useState(false);
+  // Roles already in the pipeline are shown by default; the button hides them.
+  const [includePipeline, setIncludePipeline] = useState(true);
   const now = useMemo(() => Date.now(), []);
   const tagged = useMemo(
     () => offers.map((offer) => ({ offer, source: sourceFromUrl(offer.url), seniority: seniorityFromTitle(offer.title), age: daysSince(offer.postedAt, now) })),
@@ -78,6 +80,8 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
       tagged
         .filter((t) => {
           if (isHidden(t.offer.url)) return false;
+          // Taken out of the pipeline: gone from the list (the bar below can undo it).
+          if (removed.has(t.offer.url)) return false;
           if (!includePipeline && t.offer.inPipeline) return false;
           if (within != null && (t.age == null || t.age > within)) return false;
           if (sources.size && (!t.source || !sources.has(t.source))) return false;
@@ -86,7 +90,7 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
           return true;
         })
         .map((t) => t.offer),
-    [tagged, isHidden, includePipeline, within, sources, seniorities, locQ],
+    [tagged, isHidden, removed, includePipeline, within, sources, seniorities, locQ],
   );
   const facetActive = within != null || sources.size > 0 || seniorities.size > 0 || locQ.trim() !== "";
 
@@ -140,7 +144,7 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
         availSeniorities={availSeniorities}
         allUrls={offers.map((o) => o.url)}
         resultCount={view.length}
-        totalCount={tagged.filter((t) => !isHidden(t.offer.url) && (includePipeline || !t.offer.inPipeline)).length}
+        totalCount={tagged.filter((t) => !isHidden(t.offer.url) && !removed.has(t.offer.url) && (includePipeline || !t.offer.inPipeline)).length}
         anyActive={facetActive || q.trim() !== ""}
         onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setQ(""); }}
       />
@@ -283,6 +287,8 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
           )}
         </div>
       </div>
+
+      <RemovedBar />
 
       <div className={layout === "list" ? "flex flex-col gap-2" : "grid gap-3 sm:grid-cols-2 xl:grid-cols-3"}>
         {view.map((o) => (

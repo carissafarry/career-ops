@@ -21,3 +21,14 @@ test("exploreSnapshot keeps the fields matching uses", () => {
     evaluated: [{ n: "1", company: "Acme", role: "Engineer" }],
   });
 });
+
+test("a row taken out of the inbox no longer counts as in the pipeline", () => {
+  const inbox = [
+    { url: "https://jobs.example/pending", company: "A", role: "R", done: false },
+    { url: "https://jobs.example/skipped", company: "B", role: "R", done: true },
+    // marked done because a tracker row covers it: still in the pipeline
+    { url: "https://jobs.example/tracked", company: "C", role: "R", done: true },
+  ];
+  const apps = [{ n: "7", company: "C", role: "R", url: "https://jobs.example/tracked" }];
+  assert.deepEqual(exploreSnapshot(inbox, apps).inboxUrls, ["https://jobs.example/pending", "https://jobs.example/tracked"]);
+});

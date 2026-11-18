@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ExternalLink, Plus, Check, Loader2, ShieldQuestion, Sparkles, Coins, CirclePause } from "lucide-react";
+import { ExternalLink, Plus, Check, Loader2, ShieldQuestion, Sparkles, Coins, CirclePause, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { ATS_LABEL, type AtsSource, type DiscoveredOffer } from "@/lib/explore";
 import { CHINA_SOURCES, EMPLOYER_LABEL } from "@/lib/employer-preset.mjs";
@@ -52,7 +52,8 @@ export function DiscoveryCard({
   layout?: "card" | "row";
 }) {
   const row = layout === "row";
-  const { added, adding, addToPipeline } = useExplore();
+  const { added, adding, removed, addToPipeline, removeFromPipeline } = useExplore();
+  const [removeError, setRemoveError] = useState("");
   const { jobs, startJob } = useJobs();
 
   // GLOBAL worker awareness: any worker acting on this URL drives the CTA, here
@@ -67,11 +68,21 @@ export function DiscoveryCard({
   const statusLabel = WORKER_LABEL[job?.kind ?? ""] ?? "Working…";
 
   // Worker state is not evidence that the separate Inbox write succeeded.
-  const isAdded = added.has(offer.url) || inPipeline;
+  const isAdded = (added.has(offer.url) || inPipeline) && !removed.has(offer.url);
   const isAdding = adding.has(offer.url);
   const unverified = offer.verification === "unconfirmed";
   const employer = CHINA_SOURCES.includes(offer.source);
   const fresh = freshness(offer.postedAt) || offer.postedHint || "";
+
+  const toggleInPipeline = async () => {
+    setRemoveError("");
+    if (!isAdded) {
+      void addToPipeline([offer]);
+      return;
+    }
+    const failure = await removeFromPipeline(offer);
+    if (failure) setRemoveError(failure);
+  };
 
   const evaluate = () => {
     addToPipeline([offer]); // evaluating implies it's in the pipeline — record it
@@ -166,8 +177,10 @@ export function DiscoveryCard({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              disabled={isAdded || isAdding}
-              onClick={() => addToPipeline([offer])}
+              disabled={isAdding}
+              onClick={() => void toggleInPipeline()}
+              title={isAdded ? "In your pipeline. Click to remove it." : undefined}
+              aria-label={isAdded ? `In pipeline: ${offer.title}. Click to remove it from the pipeline.` : undefined}
               className={cn(
                 "inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-2 text-xs font-medium transition-colors max-sm:min-h-[44px]",
                 isAdded ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-400" : "bg-surface-hover text-foreground hover:bg-brand-soft hover:text-brand-text",
@@ -175,6 +188,7 @@ export function DiscoveryCard({
             >
               {isAdding ? <Loader2 className="size-3.5 animate-spin" /> : isAdded ? <Check className="size-3.5" /> : <Plus className="size-3.5" />}
               {isAdded ? "In pipeline" : "Add to pipeline"}
+              {isAdded && !isAdding && <X className="size-3 opacity-60" aria-hidden="true" />}
             </button>
             <button
               type="button"
@@ -185,6 +199,11 @@ export function DiscoveryCard({
               Evaluate <Coins className="size-3.5 opacity-80" />
             </button>
           </div>
+        )}
+        {removeError && (
+          <p role="alert" className="mt-1 text-xs text-red-700 dark:text-red-400">
+            {removeError}
+          </p>
         )}
       </div>
     </div>

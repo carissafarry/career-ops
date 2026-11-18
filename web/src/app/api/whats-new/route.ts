@@ -8,6 +8,7 @@ import { rankOffers } from "@/lib/core/inbox-rank.mjs";
 import { loadFitTargets } from "@/lib/inbox-fit-profile.mjs";
 import { loadWorkplacePolicy } from "@/lib/core/workplace-policy.mjs";
 import { locationKeys } from "@/lib/location-geo.mjs";
+import { inPipelineUrls } from "@/lib/inbox-pending.mjs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -48,7 +49,13 @@ export async function GET(req: Request) {
   // lib/whats-new-suppression.
   const normalizeTextKey = await getNormalizeTextKey();
   const aggregator = await getAggregatorRule();
-  const evaluated = evaluatedKeys(readApplications(), normalizeTextKey, readLinkedReport);
+  const applications = readApplications();
+  const evaluated = evaluatedKeys(applications, normalizeTextKey, readLinkedReport);
+  // Roles the user took out of the pipeline (checked off in pipeline.md, no tracker
+  // row) stay out of "fresh" too, so removing one is a decision, not a hiding.
+  const inbox = readInbox(applications);
+  const counted = new Set(inPipelineUrls(inbox, applications));
+  const dismissed = new Set(inbox.filter((job) => job.done && !counted.has(job.url)).map((job) => job.url));
 
   let workplacePolicy: (location: string, title: string) => { eligible: boolean };
   try { workplacePolicy = await loadWorkplacePolicy(careerOpsRoot()); }
@@ -59,6 +66,7 @@ export async function GET(req: Request) {
     const [url, firstSeen, portal, title, company, status, location] = c;
     if (!url || !/^https?:\/\//i.test(url)) return null;
     if (status && /skipped|expired/i.test(status)) return null;
+    if (dismissed.has(url)) return null;
     if (isEvaluated(evaluated, normalizeTextKey, company, title, url, aggregator)) return null;
     if (!workplacePolicy(location || "", title || "").eligible) return null;
     return {
@@ -89,9 +97,9 @@ export async function GET(req: Request) {
       // applied first, the best roles (the ones the pipeline already holds) would fill
       // it and push every role not yet in the pipeline out of view. So each group gets
       // its own ceiling: roles not in the pipeline first, then the ones that are.
-      const inbox = new Set(readInbox().filter((job) => !job.done).map((job) => job.url));
-      const fresh = pool.filter((o: { url: string }) => !inbox.has(o.url));
-      const held = pool.filter((o: { url: string }) => inbox.has(o.url));
+      const waiting = new Set(inbox.filter((job) => !job.done).map((job) => job.url));
+      const fresh = pool.filter((o: { url: string }) => !waiting.has(o.url));
+      const held = pool.filter((o: { url: string }) => waiting.has(o.url));
       ranked = [
         ...(rankOffers(fresh, targets, offerLimit) as DiscoveredOffer[]),
         ...(rankOffers(held, targets, offerLimit) as DiscoveredOffer[]),

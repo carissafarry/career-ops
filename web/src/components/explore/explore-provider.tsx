@@ -71,11 +71,17 @@ type ExploreCtx = {
   scannerMissing: boolean;
   added: Set<string>;
   adding: Set<string>;
+  /** Roles taken out of the pipeline this session, whatever the page loaded with. */
+  removed: Set<string>;
+  /** The roles behind `removed`, oldest first, kept apart from any list so Undo outlives a list reload. */
+  removedOffers: DiscoveredOffer[];
   discover: () => Promise<void>;
   /** Load the SUPPLY-loop offers Today's "Fresh matches this week" already
    *  fetched from /api/whats-new, straight into the results phase — no scan. */
   loadFresh: () => Promise<void>;
   addToPipeline: (offers: DiscoveredOffer[]) => Promise<number>;
+  /** Take one role out of the pipeline (Inbox skip). Resolves with an error message, or null when it worked. */
+  removeFromPipeline: (offer: DiscoveredOffer) => Promise<string | null>;
   applyPatch: (raw: Record<string, unknown>, opts?: { merge?: boolean; run?: boolean }) => void;
   reset: () => void;
   // ── AI search (modes/discover.md) ──
@@ -150,6 +156,8 @@ export function ExploreProvider({ children }: { children: React.ReactNode }) {
   const [scannerMissing, setScannerMissing] = useState(false);
   const [added, setAdded] = useState<Set<string>>(new Set());
   const [adding, setAdding] = useState<Set<string>>(new Set());
+  const [removed, setRemoved] = useState<Set<string>>(new Set());
+  const [removedOffers, setRemovedOffers] = useState<DiscoveredOffer[]>([]);
   const [mode, setModeState] = useState<ExploreMode>("scan");
   const [aiIntent, setAiIntent] = useState("");
   const [aiTrace, setAiTrace] = useState<AiTraceChunk[]>([]);
@@ -399,9 +407,63 @@ export function ExploreProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Take a role out of the Inbox (done) or put one back (undo): the same checkbox flip as
+  // the Inbox's Skip and undo, so nothing is deleted and the change can be reversed.
+  // Resolves with an error message, or null when the file was changed.
+  const skipInbox = useCallback(async (url: string, done: boolean): Promise<string | null> => {
+    setAdding((s) => new Set([...s, url]));
+    try {
+      const r = await fetch("/api/inbox/skip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, done }),
+      });
+      const d = (await r.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!r.ok || d?.ok !== true) return typeof d?.error === "string" ? d.error : `Couldn't update the pipeline (${r.status}).`;
+      setAdded((s) => {
+        const next = new Set(s);
+        if (done) next.delete(url);
+        else next.add(url);
+        return next;
+      });
+      setRemoved((s) => {
+        const next = new Set(s);
+        if (done) next.add(url);
+        else next.delete(url);
+        return next;
+      });
+      if (!done) setRemovedOffers((s) => s.filter((o) => o.url !== url));
+      // Same refresh and ping as an add, so Pipeline and Today drop (or regain) the row.
+      router.refresh();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("co-job-done", { detail: { kind: done ? "explore-remove" : "explore-restore" } }));
+      }
+      return null;
+    } catch {
+      return "Couldn't update the pipeline.";
+    } finally {
+      setAdding((s) => {
+        const next = new Set(s);
+        next.delete(url);
+        return next;
+      });
+    }
+  }, [router]);
+
+  const removeFromPipeline = useCallback(async (offer: DiscoveredOffer) => {
+    const failure = await skipInbox(offer.url, true);
+    if (failure === null) setRemovedOffers((s) => [...s.filter((o) => o.url !== offer.url), offer]);
+    return failure;
+  }, [skipInbox]);
+
   const addToPipeline = useCallback(async (list: DiscoveredOffer[]) => {
-    const fresh = list.filter((o) => !added.has(o.url));
-    if (fresh.length === 0) return 0;
+    // A role taken out this session is still a row in pipeline.md (checked off): put it back.
+    let restored = 0;
+    for (const o of list.filter((x) => removed.has(x.url))) {
+      if ((await skipInbox(o.url, false)) === null) restored++;
+    }
+    const fresh = list.filter((o) => !added.has(o.url) && !removed.has(o.url));
+    if (fresh.length === 0) return restored;
     setAdding((s) => new Set([...s, ...fresh.map((o) => o.url)]));
     try {
       const r = await fetch("/api/explore/add", {
@@ -426,9 +488,9 @@ export function ExploreProvider({ children }: { children: React.ReactNode }) {
           window.dispatchEvent(new CustomEvent("co-job-done", { detail: { kind: "explore-add" } }));
         }
       }
-      return d.added ?? 0;
+      return (d.added ?? 0) + restored;
     } catch {
-      return 0;
+      return restored;
     } finally {
       setAdding((s) => {
         const next = new Set(s);
@@ -436,7 +498,7 @@ export function ExploreProvider({ children }: { children: React.ReactNode }) {
         return next;
       });
     }
-  }, [added, router]);
+  }, [added, removed, router, skipInbox]);
 
   const applyPatch = useCallback((raw: Record<string, unknown>, opts?: { merge?: boolean; run?: boolean }) => {
     const next = parseExplorePatch(raw, filtersRef.current, opts?.merge ?? false);
@@ -665,11 +727,11 @@ export function ExploreProvider({ children }: { children: React.ReactNode }) {
     () => ({
       filters, setFilters, initFilters, phase,
       running: phase === "casting" || phase === "scanning" || phase === "revealing" || phase === "hunting",
-      offers, sources, matchCount, companiesScanned, companiesAvailable, capHit, droppedNoDate, status, employerOutcome, partial, error, scannerMissing, added, adding,
-      discover, loadFresh, addToPipeline, applyPatch, reset,
+      offers, sources, matchCount, companiesScanned, companiesAvailable, capHit, droppedNoDate, status, employerOutcome, partial, error, scannerMissing, added, adding, removed, removedOffers,
+      discover, loadFresh, addToPipeline, removeFromPipeline, applyPatch, reset,
       mode, setMode, aiIntent, setAiIntent, discoverAI, aiTrace, aiCost,
     }),
-    [filters, setFilters, initFilters, phase, offers, sources, matchCount, companiesScanned, companiesAvailable, capHit, droppedNoDate, status, employerOutcome, partial, error, scannerMissing, added, adding, discover, loadFresh, addToPipeline, applyPatch, reset, mode, setMode, aiIntent, discoverAI, aiTrace, aiCost],
+    [filters, setFilters, initFilters, phase, offers, sources, matchCount, companiesScanned, companiesAvailable, capHit, droppedNoDate, status, employerOutcome, partial, error, scannerMissing, added, adding, removed, removedOffers, discover, loadFresh, addToPipeline, removeFromPipeline, applyPatch, reset, mode, setMode, aiIntent, discoverAI, aiTrace, aiCost],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

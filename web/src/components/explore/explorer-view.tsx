@@ -41,7 +41,7 @@ export function ExplorerView({
   evaluated: { n: string; company: string; role: string }[];
   rootExists: boolean;
 }) {
-  const { filters, setFilters, initFilters, phase, running, offers, discover, loadFresh, status, employerOutcome, error, scannerMissing, mode, setMode, aiIntent, setAiIntent, discoverAI, companiesScanned, companiesAvailable, capHit, droppedNoDate, partial } = useExplore();
+  const { filters, setFilters, initFilters, phase, running, offers, discover, loadFresh, status, employerOutcome, error, scannerMissing, mode, setMode, aiIntent, setAiIntent, discoverAI, companiesScanned, companiesAvailable, capHit, droppedNoDate, partial, removed } = useExplore();
   const scanNote =
     companiesScanned > 0
       ? `Scanned ${companiesScanned.toLocaleString()}${companiesAvailable > companiesScanned ? ` of ${companiesAvailable.toLocaleString()}` : ""} compan${companiesScanned === 1 ? "y" : "ies"}${partial ? " · some sources were unreachable" : ""}.`
@@ -92,7 +92,7 @@ export function ExplorerView({
   const enriched: EnrichedOffer[] = useMemo(() => {
     const trackedUrls = new Set(inboxUrls);
     return offers.map((o) => {
-      const inPipeline = trackedUrls.has(o.url);
+      const inPipeline = trackedUrls.has(o.url) && !removed.has(o.url);
       const c = norm(o.company);
       const t = norm(o.title);
       const ev = evaluated.find((a) => {
@@ -102,7 +102,7 @@ export function ExplorerView({
       });
       return { ...o, inPipeline, evaluatedN: ev?.n };
     });
-  }, [offers, inboxUrls, evaluated]);
+  }, [offers, inboxUrls, evaluated, removed]);
 
   const isAi = mode === "ai";
   const isResults = phase === "results";

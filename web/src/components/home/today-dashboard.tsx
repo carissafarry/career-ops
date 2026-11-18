@@ -22,6 +22,9 @@ import { companyPresentation } from "@/lib/company-presentation.mjs";
 import { ApplyNext } from "@/components/apply-next";
 import { resolveHeroState, mayClaimAllClear, showsQueue, missingSourceLabel, displayCounts } from "@/lib/home/hero-state.mjs";
 import { homeFollowupRemainder } from "@/lib/home/followups-shown.mjs";
+import { inPipelineUrls } from "@/lib/inbox-pending.mjs";
+import { useExplore } from "@/components/explore/explore-provider";
+import { RemovedBar } from "@/components/explore/removed-bar";
 
 // The retention "Today": a dual-loop action queue (the maintainer's
 // "N new matches this week · M follow-ups due"). SUPPLY loop = fresh free-scan
@@ -176,7 +179,8 @@ export function TodayDashboard({
   // the outage. See displayCounts().
   const shown = displayCounts({ followupsError, freshError, overdue, newThisWeek });
   const followupRest = homeFollowupRemainder(followups.length, overdue);
-  const inboxUrls = useMemo(() => new Set(inbox.map((j) => j.url)), [inbox]);
+  const { removed } = useExplore();
+  const inboxUrls = useMemo(() => new Set(inPipelineUrls(inbox, applications)), [inbox, applications]);
   const dueFollowups = useMemo(
     () => selectDueFollowups(followups, Math.max(followups.length, 1)),
     [followups],
@@ -341,10 +345,11 @@ export function TodayDashboard({
       {!freshError && fresh.length > 0 && (
         <Section icon={Sparkles} title="Fresh matches this week" hint="Found by your free scans · 0 tokens">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {fresh.slice(0, 6).map((o) => (
+            {fresh.filter((o) => !removed.has(o.url)).slice(0, 6).map((o) => (
               <DiscoveryCard key={o.url} offer={o} inPipeline={inboxUrls.has(o.url)} />
             ))}
           </div>
+          <RemovedBar />
           {fresh.length > 6 && (
             <Link href="/explore?view=fresh" className="mt-3 inline-flex items-center text-sm text-muted transition hover:text-brand-text max-sm:min-h-[44px]">
               See all {freshCount} →
