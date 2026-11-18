@@ -14,21 +14,23 @@ type Body = {
   subtitle?: string;
   page?: string;
   input?: string;
-  status?: "done" | "gated";
+  status?: "done" | "gated" | "error";
   gate?: { reason: string; message: string; confirmationRequired: boolean };
   result?: { score: number | null; summary: string };
   steps?: { kind: string; label: string }[];
   output?: string;
+  /** Why a failed run stopped (status "error"). */
+  error?: string;
 };
 
-// Persist a finished worker's log as markdown under a web-managed dir so the CLI
+// Persist a finished (or failed) worker's log as markdown under a web-managed dir so the CLI
 // assistant can read past runs ("what did we find on that Anthropic role?").
 export async function POST(req: Request) {
   const b = await readJsonObject<Body>(req);
   if (!b) return NextResponse.json({ error: "bad json" }, { status: 400 });
   const safeId = String(b.id ?? "").replace(/[^a-z0-9_-]/gi, "");
   if (!safeId) return NextResponse.json({ error: "id required" }, { status: 400 });
-  if (b.status !== undefined && b.status !== "done" && b.status !== "gated") return NextResponse.json({ error: "invalid status" }, { status: 400 });
+  if (b.status !== undefined && b.status !== "done" && b.status !== "gated" && b.status !== "error") return NextResponse.json({ error: "invalid status" }, { status: 400 });
   const gate = b.status === "gated" ? b.gate : undefined;
   if (b.status === "gated" && (!gate || !EVALUATION_GATE_REASONS.some(reason => reason === gate.reason)
     || typeof gate.message !== "string" || !gate.message.trim() || gate.message.trim().length > 1200
@@ -44,13 +46,17 @@ export async function POST(req: Request) {
   }
   const steps = (Array.isArray(b.steps) ? b.steps : []).map((s) => `- ${s.kind === "tool" ? `🔧 ${s.label}` : s.label}`).join("\n");
   const verdict = b.result?.score != null ? `${b.result.score}/5 — ${b.result.summary || ""}` : "—";
+  const failure = b.status === "error" && typeof b.error === "string" && b.error.trim() ? b.error.trim().slice(0, 2000) : "";
   const md = `# Web run · ${b.title || b.id}
 
 - id: ${b.id}
 - page: ${b.page || "-"}
 - input: ${b.input || "-"}
 ${b.status ? `- status: ${b.status}\n` : ""}- verdict: ${verdict}
-${gate ? `
+${failure ? `
+## Error
+${failure}
+` : ""}${gate ? `
 ## Evaluation stop
 - reason: ${gate.reason}
 - confirmation required: ${gate.confirmationRequired ? "yes" : "no"}

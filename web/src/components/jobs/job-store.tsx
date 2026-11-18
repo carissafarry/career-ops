@@ -1,5 +1,6 @@
 "use client";
 
+import { repairBriefFor } from "@/lib/cv-instructions.mjs";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { scoreTone } from "@/lib/format";
 import { resolveCliId } from "@/lib/saved-cli";
@@ -76,6 +77,7 @@ export function JobsProvider({ children }: { children: React.ReactNode }) {
     return () => { owner.dispose(); feedback.current = null; };
   }, []);
   const seq = useRef(0);
+  const startRef = useRef<((opts: StartOpts) => string | null) | null>(null);
 
   // Restore first. setReady in this effect, and save only on a later render
   // where ready is already true. Saving from a ref flipped in this same
@@ -194,15 +196,24 @@ export function JobsProvider({ children }: { children: React.ReactNode }) {
             steps: lastLabel ? [...j.steps, { kind: "status", label: lastLabel, ts: Date.now() }] : j.steps,
           }));
           // persist a readable log file so the CLI/assistant can read past runs
-          if (status === "done" || status === "gated") {
+          // A CV the fact check rejected is retried (at most twice) with the rejection
+          // quoted, so the agent fixes the named items instead of the user starting over.
+          if (status === "error" && opts.kind === "pdf") {
+            const retry = repairBriefFor(lastLabel, opts.brief);
+            if (retry) {
+              window.setTimeout(() => startRef.current?.({ ...opts, subtitle: `fixing the fact check, try ${Number(retry.attempt) + 1} of 3`, brief: retry }), 0);
+            }
+          }
+          // Failed runs are saved too, with the reason, so a failure can be read back from disk.
+          if (status === "done" || status === "gated" || status === "error") {
             fetch("/api/runs/save", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id, title: opts.title, subtitle: opts.subtitle, page: opts.page, input: opts.input, status, gate, result, cost, steps, output: text }),
+              body: JSON.stringify({ id, title: opts.title, subtitle: opts.subtitle, page: opts.page, input: opts.input, status, gate, result, cost, steps, output: text, error: status === "error" ? lastLabel : undefined }),
             }).catch(() => {});
             // Tell server-snapshot surfaces (Today, pipeline) to refetch — the
             // worker just wrote a real tracker row / report they don't yet see.
-            if (status === "done" && typeof window !== "undefined" && (opts.kind === "evaluate" || opts.kind === "pdf")) {
+            if (status === "done" && typeof window !== "undefined" && (opts.kind === "evaluate" || opts.kind === "pdf" || opts.kind === "company")) {
               window.dispatchEvent(new CustomEvent("co-job-done", { detail: { kind: opts.kind, input: opts.input } }));
             }
           }
@@ -259,6 +270,8 @@ export function JobsProvider({ children }: { children: React.ReactNode }) {
     },
     [patch],
   );
+
+  startRef.current = startJob;
 
   const removeJob = useCallback((id: string) => setJobs((js) => js.filter((j) => j.id !== id)), []);
   const clearFinished = useCallback(() => setJobs((js) => js.filter((j) => j.status === "running")), []);
