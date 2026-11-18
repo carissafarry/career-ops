@@ -88,7 +88,6 @@ export default async function ApplyPage({
     <ApplyChecklist
       company={company}
       role={app?.role ?? ""}
-      backHref={`/pipeline${suffix}`}
       reportHref={`/pipeline/${encodeURIComponent(id)}${suffix}`}
       postingUrl={postingUrl}
       blocked={blocked}

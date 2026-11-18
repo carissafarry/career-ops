@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { PageFrame } from "@/components/page-frame";
@@ -21,7 +20,6 @@ const PILL =
 export function ApplyChecklist({
   company,
   role,
-  backHref,
   reportHref,
   postingUrl,
   resume,
@@ -42,7 +40,6 @@ export function ApplyChecklist({
 }: {
   company: string;
   role: string;
-  backHref: string;
   reportHref: string;
   postingUrl: string;
   resume: PdfFile;
@@ -63,16 +60,13 @@ export function ApplyChecklist({
 }) {
   return (
     <PageFrame className="max-w-3xl">
-      <BackLink href={backHref} className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-brand-text">
-        <ArrowLeft className="size-4" /> Pipeline
+      <BackLink previous href={reportHref} className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-brand-text">
+        <ArrowLeft className="size-4" /> Back
       </BackLink>
       <header className="mt-5">
         <p className="font-mono text-xs tracking-[0.01em] text-faint">Apply checklist</p>
         <h1 className="mt-2 font-display text-3xl tracking-tight text-landing">{company}</h1>
         {role && <p className="mt-1 text-muted">{role}</p>}
-        <Link href={reportHref} className="mt-3 inline-flex text-sm text-brand-text hover:underline">
-          Back to the report
-        </Link>
       </header>
 
       {blocked ? (

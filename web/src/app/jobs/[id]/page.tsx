@@ -2,6 +2,7 @@
 
 import { use } from "react";
 import ReactMarkdown from "react-markdown";
+import { markdownLinks } from "@/components/markdown-link";
 import remarkGfm from "remark-gfm";
 import { noMarkdownImages } from "@/lib/markdown-options.mjs";
 import { ArrowLeft, Loader2, Wrench, CircleDot, Check, X, CirclePause } from "lucide-react";
@@ -20,7 +21,11 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
   const { jobs, ready } = useJobs();
   const job = jobs.find((j) => j.id === id);
   const query = pipelineQuery(useSearchParams().toString());
-  const pipelineHref = `/pipeline${query ? `?${query}` : ""}`;
+  // Back goes to the page the run was started from (for example the evaluation
+  // /pipeline/2), not always the list. Runs saved before this was tracked fall back to the list.
+  const origin = job?.page && /^\/(?!\/)/.test(job.page) ? job.page : "/pipeline";
+  const pipelineHref = `${origin}${query && origin.startsWith("/pipeline") ? `?${query}` : ""}`;
+  const backLabel = /^\/pipeline\/(\d+)/.exec(origin) ? `Evaluation #${/^\/pipeline\/(\d+)/.exec(origin)?.[1]}` : origin.startsWith("/explore") ? "Explore" : "Pipeline";
 
   if (!ready) return <JobLoading />;
   if (missingWorker({ ready, ids: jobs.map((j) => j.id), id })) notFound();
@@ -31,7 +36,7 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
       <BackLink href={pipelineHref} className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-brand-text">
-        <ArrowLeft className="size-4" /> Pipeline
+        <ArrowLeft className="size-4" /> {backLabel}
       </BackLink>
 
       <section className="dot-bg relative mt-5 overflow-hidden rounded-2xl border border-border bg-surface shadow-card px-6 py-7">
@@ -104,7 +109,7 @@ export default function JobPage({ params }: { params: Promise<{ id: string }> })
         <div className="mt-8">
           <h2 className="text-xs font-semibold tracking-[0.01em] text-muted">Output</h2>
           <div className="report-prose mt-3 rounded-2xl border border-border bg-surface shadow-card p-5">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} {...noMarkdownImages}>{displayOutput}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownLinks} {...noMarkdownImages}>{displayOutput}</ReactMarkdown>
           </div>
           {displayOutput !== job.text && (
             <details className="mt-3 text-sm text-muted">
