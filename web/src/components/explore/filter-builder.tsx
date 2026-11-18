@@ -92,7 +92,7 @@ function KeywordField({
         onBlur={() => draft.trim() && commit(draft)}
         placeholder={values.length ? "" : placeholder}
       />
-      {values.length > 1 && (
+      {(values.length > 0 || draft.trim() !== "") && (
         <button
           type="button"
           aria-label={`Clear all${ariaLabel ? ` ${ariaLabel.toLowerCase()}` : ""}`}
@@ -132,6 +132,7 @@ export function FilterBuilder({
   const employer = filters.preset === CHINA_PRESET;
   const [advanced, setAdvanced] = useState(false);
   const set = (patch: Partial<ExploreFilters>) => onChange({ ...filters, ...patch });
+  const anyChips = [filters.positive, filters.negative, filters.allow, filters.block, filters.blockHard, filters.alwaysAllow].some((l) => l.length > 0);
   const toggleAts = (a: AtsSource) => {
     const has = filters.ats.includes(a);
     const next = has ? filters.ats.filter((x) => x !== a) : [...filters.ats, a];
@@ -142,6 +143,17 @@ export function FilterBuilder({
     <fieldset disabled={disabled} className="space-y-4">
       <style>{STYLE}</style>
       <SavedFiltersBar filters={filters} onLoad={onChange} />
+      {anyChips && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => set({ positive: [], negative: [], allow: [], block: [], blockHard: [], alwaysAllow: [] })}
+            className="rounded-full border border-border px-2.5 py-1 text-xs font-medium text-muted transition-colors hover:border-brand/40 hover:text-brand-text max-sm:min-h-[44px]"
+          >
+            Clear all keywords &amp; locations
+          </button>
+        </div>
+      )}
       <fieldset>
         <legend className="mb-1.5 text-[14px] font-medium">Discovery sources</legend>
         <div className="flex flex-wrap gap-4 text-sm">
