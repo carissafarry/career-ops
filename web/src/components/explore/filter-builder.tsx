@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { X, Ban, Clock, MapPin, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { ATS_LABEL, ATS_SOURCES, cleanChips, type AtsSource, type ExploreFilters } from "@/lib/explore";
+import { ATS_LABEL, BOARDS, COMPANY_ATS, cleanChips, type AtsSource, type ExploreFilters } from "@/lib/explore";
+import { BOARD_REGION } from "@/lib/board-sources.mjs";
 
 import { CHINA_PRESET, CHINA_SOURCES, EMPLOYER_LABEL } from "@/lib/employer-preset.mjs";
 import type { EmployerSource } from "@/lib/explore";
@@ -118,6 +119,64 @@ function Label({ children, hint }: { children: React.ReactNode; hint?: string })
   );
 }
 
+function SourceGroup({
+  title,
+  hint,
+  sources,
+  filters,
+  onToggle,
+  onClear,
+}: {
+  title: string;
+  hint?: string;
+  sources: AtsSource[];
+  filters: ExploreFilters;
+  onToggle: (a: AtsSource) => void;
+  onClear: (sources: AtsSource[]) => void;
+}) {
+  const chosen = sources.filter((a) => filters.ats.includes(a)).length;
+  return (
+    <div className="mt-2 first:mt-0">
+      <p className="mb-1 text-xs text-faint">
+        {title} · {chosen} of {sources.length}
+        {hint ? <span className="ml-2">{hint}</span> : null}
+        {chosen > 0 && (
+          <button
+            type="button"
+            aria-label={`Clear all ${title.toLowerCase()}`}
+            onClick={() => onClear(sources)}
+            className="ml-2 rounded-full px-2 py-0.5 text-xs text-muted transition-colors hover:text-foreground max-sm:min-h-[44px]"
+          >
+            Clear
+          </button>
+        )}
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {sources.map((a) => {
+          const on = filters.ats.includes(a);
+          const region = (BOARD_REGION as Record<string, string>)[a];
+          return (
+            <button
+              key={a}
+              type="button"
+              aria-pressed={on}
+              title={region}
+              onClick={() => onToggle(a)}
+              className={cn(
+                "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors max-sm:min-h-[44px]",
+                on ? "border-brand/40 bg-brand-soft text-brand-text" : "border-border text-muted hover:text-foreground",
+              )}
+            >
+              {ATS_LABEL[a]}
+              {region ? <span className="ml-1 font-normal opacity-70">· {region}</span> : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function FilterBuilder({
   filters,
   onChange,
@@ -138,6 +197,9 @@ export function FilterBuilder({
     const next = has ? filters.ats.filter((x) => x !== a) : [...filters.ats, a];
     set({ ats: next.length ? next : filters.ats });
   };
+
+  // Unlike a single chip, Clear may leave no source at all: the hint then asks for one.
+  const clearAts = (group: AtsSource[]) => set({ ats: filters.ats.filter((x) => !group.includes(x)) });
 
   return (
     <fieldset disabled={disabled} className="space-y-4">
@@ -224,24 +286,15 @@ export function FilterBuilder({
 
         <div>
           <Label hint={filters.ats.length === 0 ? "pick at least one" : undefined}>Sources</Label>
-          <div className="flex flex-wrap gap-1.5">
-            {ATS_SOURCES.map((a) => {
-              const on = filters.ats.includes(a);
-              return (
-                <button
-                  key={a}
-                  type="button"
-                  onClick={() => toggleAts(a)}
-                  className={cn(
-                    "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors max-sm:min-h-[44px]",
-                    on ? "border-brand/40 bg-brand-soft text-brand-text" : "border-border text-muted hover:text-foreground",
-                  )}
-                >
-                  {ATS_LABEL[a]}
-                </button>
-              );
-            })}
-          </div>
+          <SourceGroup title="Company career boards" sources={COMPANY_ATS} filters={filters} onToggle={toggleAts} onClear={clearAts} />
+          <SourceGroup
+            title="Job boards"
+            hint="each role in “Roles to find” is searched on Jobstreet, Glints and Kalibrr; the others are read whole"
+            sources={BOARDS}
+            filters={filters}
+            onToggle={toggleAts}
+            onClear={clearAts}
+          />
         </div>
       </div>}
 

@@ -13,6 +13,8 @@ import { ATS_LABEL, ATS_SOURCES, type AtsSource, type DiscoveredOffer, type Expl
 import { mergeScanResults, timedOutMessage } from "./scan-merge.mjs";
 import { parseScanJsonStdout } from "./scan-json.mjs";
 import { scannerArgs } from "./scan-args.mjs";
+import { runBoardWorker } from "./board-discovery.mjs";
+import { isBoardSource } from "@/lib/board-sources.mjs";
 
 export type { DiscoveredOffer, ScanEvent, AtsSource } from "@/lib/explore";
 export { ATS_SOURCES } from "@/lib/explore";
@@ -375,9 +377,75 @@ function runScanner(
 
 const NO_OUTPUT = "The scanner returned no readable output.";
 
+type BoardRun = {
+  /** Boards that answered (completely or in part). */
+  ok: number;
+  /** Boards that failed or answered only in part, by id. */
+  problem: string[];
+  /** One line per problem board: which board and why. */
+  notes: string[];
+  /** Offers the boards added. */
+  offerCount: number;
+};
+const NO_BOARDS: BoardRun = { ok: 0, problem: [], notes: [], offerCount: 0 };
+
+/**
+ * Read the selected job boards, one worker each, in parallel with the ATS sweep.
+ * The boards see the same title and location filters as the ATS sweep, read back
+ * from the ephemeral filter file, so one set of chips drives both.
+ */
+async function runBoards(
+  boards: string[],
+  filters: ExploreFilters,
+  tempPortals: string,
+  onEvent: (e: ScanEvent) => void,
+  sink: { offers: DiscoveredOffer[]; seen: Set<string> },
+  roleTargets: string[],
+): Promise<BoardRun> {
+  let cfg: Record<string, unknown> = {};
+  try {
+    const parsed = yaml.load(fs.readFileSync(tempPortals, "utf8"));
+    if (parsed && typeof parsed === "object") cfg = parsed as Record<string, unknown>;
+  } catch {
+    /* no filter file: the boards are read unfiltered */
+  }
+  const request = {
+    titleFilter: cfg.title_filter ?? {},
+    locationFilter: cfg.location_filter ?? {},
+    sinceDays: filters.sinceDays,
+    terms: filters.positive,
+  };
+  const codeRoot = resolveCodeRoot(process.cwd(), process.env);
+  const results = await Promise.all(
+    boards.map(async (id) => {
+      onEvent({ kind: "atsStart", ats: id, companies: 1 });
+      const result = await runBoardWorker(id, request, { codeRoot, signal: undefined });
+      let added = 0;
+      for (const o of result.offers as JsonOffer[]) {
+        const before = sink.offers.length;
+        ingestJsonOffer(o, id, filters, sink.seen, sink.offers, onEvent, roleTargets);
+        added += sink.offers.length - before;
+      }
+      onEvent({ kind: "atsDone", ats: id, unreachable: result.state === "complete" ? 0 : 1 });
+      return { ...result, added };
+    }),
+  );
+  const label = (id: string) => ATS_LABEL[id as AtsSource] ?? id;
+  const problems = results.filter((r) => r.state !== "complete");
+  for (const r of problems) onEvent({ kind: "log", line: `${label(r.id)}: ${r.reason || r.state}` });
+  return {
+    ok: results.filter((r) => r.state !== "failed").length,
+    problem: problems.map((r) => r.id),
+    notes: problems.map((r) => `${label(r.id)}: ${r.reason || r.state}`),
+    offerCount: results.reduce((n, r) => n + r.added, 0),
+  };
+}
+
 export async function runDiscovery(filters: ExploreFilters, onEvent: (e: ScanEvent) => void): Promise<DiscoveredOffer[]> {
   const tempPortals = writeTempPortals(filters);
-  const ats = (filters.ats.length ? filters.ats : [...ATS_SOURCES]).filter((a) => (ATS_SOURCES as readonly string[]).includes(a));
+  const selected = (filters.ats.length ? filters.ats : [...ATS_SOURCES]).filter((a) => (ATS_SOURCES as readonly string[]).includes(a));
+  const boards = selected.filter((a) => isBoardSource(a));
+  const ats = selected.filter((a) => !isBoardSource(a));
   const useJson = scannerSupportsJson();
   // Read once per run: every child gets the same budget, and the copy quotes it
   // exactly (a 1.5s budget must not read as 2s).
@@ -390,13 +458,33 @@ export async function runDiscovery(filters: ExploreFilters, onEvent: (e: ScanEve
   const sink = { offers: [] as DiscoveredOffer[], seen: new Set<string>() };
 
   try {
+    // Job boards run beside the ATS sweep, so a slow board never holds up the other.
+    const boardsRun = boards.length ? runBoards(boards, filters, tempPortals, onEvent, sink, roleTargets) : Promise.resolve(NO_BOARDS);
+
+    if (ats.length === 0) {
+      const b = await boardsRun;
+      if (b.ok === 0) onEvent({ kind: "error", message: b.notes.join("; ") || NO_OUTPUT });
+      else {
+        onEvent({
+          kind: "summary",
+          companiesScanned: b.ok,
+          unreachable: b.problem.length,
+          matches: sink.offers.length,
+          ...(b.problem.length ? { incomplete: b.problem } : {}),
+        });
+      }
+      return sink.offers;
+    }
+
     if (!useJson) {
       // Older checkouts: one child, human-stdout parse. It streams offers as they
       // arrive, so the ones collected so far are returned; a deadline kill still
       // says so instead of ending silently.
       const run = await runScanner(ats, false, filters, tempPortals, onEvent, sink, timeoutMs, roleTargets);
-      if (run.failed) onEvent({ kind: "error", message: run.failed });
-      else if (run.timedOut) onEvent({ kind: "error", message: scanTimeoutMessage(timeoutMs) });
+      const b = await boardsRun;
+      if (run.failed) {
+        if (b.ok === 0) onEvent({ kind: "error", message: run.failed });
+      } else if (run.timedOut) onEvent({ kind: "error", message: scanTimeoutMessage(timeoutMs) });
       return sink.offers;
     }
 
@@ -407,6 +495,7 @@ export async function runDiscovery(filters: ExploreFilters, onEvent: (e: ScanEve
       ats.map((a) => runScanner([a], true, filters, tempPortals, onEvent, sink, timeoutMs, roleTargets)),
     );
 
+    const b = await boardsRun;
     const { offers, seen } = sink;
     const finished: ScanJson[] = [];
     runs.forEach((run, i) => {
@@ -422,7 +511,7 @@ export async function runDiscovery(filters: ExploreFilters, onEvent: (e: ScanEve
     const timedOut = ats.filter((_, i) => stopped[i]);
     const incomplete = ats.filter((_, i) => !runs[i].json || stopped[i]);
 
-    if (finished.length === 0) {
+    if (finished.length === 0 && b.ok === 0) {
       const failed = runs.find((r) => r.failed)?.failed;
       onEvent({
         kind: "error",
@@ -437,10 +526,17 @@ export async function runDiscovery(filters: ExploreFilters, onEvent: (e: ScanEve
       // printed nothing. Otherwise it is a note beside the sources that finished.
       onEvent(incomplete.length === ats.length ? { kind: "error", message } : { kind: "log", line: message });
     }
+    const merged = mergeScanResults(finished, offers.length);
+    const atsCounted = finished.some((r) => typeof r.postingsKept === "number");
     onEvent({
       kind: "summary",
-      ...mergeScanResults(finished, offers.length),
+      ...merged,
+      companiesScanned: merged.companiesScanned + b.ok,
+      unreachable: merged.unreachable + b.problem.length,
+      matches: merged.matches + (atsCounted ? b.offerCount : 0),
       ...(incomplete.length ? { incomplete } : {}),
+      // Boards that failed or answered in part are incomplete too.
+      ...(b.problem.length ? { incomplete: [...incomplete, ...b.problem] } : {}),
     });
     return offers;
   } finally {

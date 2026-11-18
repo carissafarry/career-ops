@@ -1,3 +1,5 @@
+import { BOARD_SOURCES, BOARD_LABEL } from "./board-sources.mjs";
+
 // Client-safe types + codec for the Explorer (job discovery). NO node imports —
 // both client components and server routes import this for the shared shapes, so
 // the filter contract, the discovered-offer shape, and the stream-event grammar
@@ -7,9 +9,15 @@
 export type EmployerSource = "tencent" | "bytedance" | "meituan";
 export type DiscoverySource = AtsSource | EmployerSource;
 export type EmployerScanOutcome = { state: "complete" | "partial" | "failed"; message: string };
-export type AtsSource = "greenhouse" | "lever" | "ashby" | "workday" | "icims" | "bamboohr" | "paylocity" | "join" | "workable";
+export type CompanyAts = "greenhouse" | "lever" | "ashby" | "workday" | "icims" | "bamboohr" | "paylocity" | "join" | "workable";
+export type BoardSource = "jobstreet" | "glints" | "kalibrr" | "techinasia" | "himalayas" | "remoteok" | "remotive" | "weworkremotely" | "workingnomads" | "jobicy";
+// A source is a company ATS (read by scan-ats-full.mjs) or a job board (read by the
+// board providers, see board-sources.mjs); the Sources chips list both.
+export type AtsSource = CompanyAts | BoardSource;
 // Every platform scan-ats-full.mjs can walk. The first four are the original set.
-export const ATS_SOURCES: AtsSource[] = ["greenhouse", "lever", "ashby", "workday", "icims", "bamboohr", "paylocity", "join", "workable"];
+export const COMPANY_ATS: CompanyAts[] = ["greenhouse", "lever", "ashby", "workday", "icims", "bamboohr", "paylocity", "join", "workable"];
+export const BOARDS: BoardSource[] = BOARD_SOURCES as BoardSource[];
+export const ATS_SOURCES: AtsSource[] = [...COMPANY_ATS, ...BOARDS];
 // Selected when Explore opens. Workable is left out: its feed is one very large
 // download (about 140 MB compressed) whatever the company limit is, so it stays opt-in.
 export const DEFAULT_ATS: AtsSource[] = ATS_SOURCES.filter((a) => a !== "workable");
@@ -23,6 +31,7 @@ export const ATS_LABEL: Record<AtsSource, string> = {
   paylocity: "Paylocity",
   join: "Join",
   workable: "Workable",
+  ...(BOARD_LABEL as Record<BoardSource, string>),
 };
 
 /** The full UI filter state. The keyword/location lists mirror scan.mjs's
