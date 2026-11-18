@@ -7,6 +7,7 @@ import { ATS_LABEL, ATS_SOURCES, cleanChips, type AtsSource, type ExploreFilters
 
 import { CHINA_PRESET, CHINA_SOURCES, EMPLOYER_LABEL } from "@/lib/employer-preset.mjs";
 import type { EmployerSource } from "@/lib/explore";
+import { SavedFiltersBar } from "./saved-filters-bar";
 
 const RECENCY = [
   { label: "24h", days: 1 },
@@ -91,6 +92,19 @@ function KeywordField({
         onBlur={() => draft.trim() && commit(draft)}
         placeholder={values.length ? "" : placeholder}
       />
+      {values.length > 1 && (
+        <button
+          type="button"
+          aria-label={`Clear all${ariaLabel ? ` ${ariaLabel.toLowerCase()}` : ""}`}
+          onClick={() => {
+            setDraft("");
+            onChange([]);
+          }}
+          className="ml-auto shrink-0 rounded-full px-2 py-0.5 text-xs text-muted transition-colors hover:text-foreground max-sm:min-h-[44px]"
+        >
+          Clear
+        </button>
+      )}
     </div>
   );
 }
@@ -127,6 +141,7 @@ export function FilterBuilder({
   return (
     <fieldset disabled={disabled} className="space-y-4">
       <style>{STYLE}</style>
+      <SavedFiltersBar filters={filters} onLoad={onChange} />
       <fieldset>
         <legend className="mb-1.5 text-[14px] font-medium">Discovery sources</legend>
         <div className="flex flex-wrap gap-4 text-sm">
