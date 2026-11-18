@@ -21,7 +21,12 @@ import { CompanyLogo } from "@/components/company-logo";
 import { ScoreMethodology } from "@/components/score-methodology";
 import { ScoreLevers } from "@/components/score-levers";
 import { PrepPack } from "@/components/prep-pack";
-import { GeneratePdfButton } from "@/components/generate-pdf-button";
+import { CvFileActions, GeneratePdfButton } from "@/components/generate-pdf-button";
+import { CvInstructionBox } from "@/components/cv-instruction-box";
+import { btn, btnDone } from "@/lib/action-styles";
+import { DownloadLastCv } from "@/components/download-last-cv";
+import { LatexCvButton } from "@/components/latex-cv-button";
+import { CompanyResearchPanel, EvaluateCompanyButton } from "@/components/company-research-panel";
 import { CoverDraftButton } from "@/components/cover-draft-button";
 import { ApplyButton } from "@/components/apply-button";
 import { MarkPdfReadyButton } from "@/components/mark-pdf-ready-button";
@@ -45,6 +50,20 @@ function isMachine(heading: string): boolean {
   return /machine summary|submitted|submit[-\s]?log/i.test(heading);
 }
 
+// One labelled row of related actions. A row whose buttons all render nothing
+// (a client component can return null) hides itself, label included.
+function ActionRow({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-2 px-4 py-3 has-[.act-row:empty]:hidden sm:flex-row sm:items-start sm:gap-4">
+      <p className="w-24 shrink-0 pt-2 text-sm font-semibold text-foreground">
+        {label}
+        {hint && <span className="mt-0.5 block text-xs font-normal text-faint">{hint}</span>}
+      </p>
+      <div className="act-row flex min-w-0 flex-1 flex-wrap items-start gap-2 empty:hidden">{children}</div>
+    </div>
+  );
+}
+
 export function ReportView({
   id,
   app,
@@ -57,6 +76,7 @@ export function ReportView({
   backHref = "/pipeline",
   applyHref,
   reportNum = null,
+  companyResearch = null,
 }: {
   id: string;
   app: Application | null;
@@ -77,6 +97,8 @@ export function ReportView({
   backHref?: string;
   applyHref?: string;
   reportNum?: number | null;
+  /** Saved "Evaluate company" report for this application, if one exists. */
+  companyResearch?: { markdown: string; at: string } | null;
 }) {
   const meta = report ? parseReport(report) : null;
   const field = (label: string) => meta?.fields.find((f) => f.label === label)?.value;
@@ -95,7 +117,7 @@ export function ReportView({
   const companyName = company?.label ?? app?.company ?? meta?.title ?? id;
 
   return (
-    <PageFrame className="max-w-3xl xl:max-w-5xl 2xl:max-w-[1600px]">
+    <PageFrame width="wide" className="pb-44">
       <BackLink
         href={backHref}
         className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-brand-text print:hidden"
@@ -170,38 +192,59 @@ export function ReportView({
               </div>
             );
             const actions = (
-              <div className="mt-4 flex flex-wrap items-center gap-2.5 print:hidden">
+              <>
+              <div className="mt-4 space-y-3 print:hidden">
                 {app && <StatusSelect n={id} current={app.status} />}
-                {spend.generateCv && (
-                  <GeneratePdfButton n={id} company={app?.company || meta?.title || id} onDisk={disk.exists} />
-                )}
-                {app && report && <CoverDraftButton n={id} company={companyName} />}
-                {spend.checklist && applyHref && (
-                  <Link
-                    href={applyHref}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted transition-colors hover:border-brand/40 hover:text-brand-text max-sm:min-h-[44px]"
-                  >
-                    Apply checklist
-                  </Link>
-                )}
-                <MarkPdfReadyButton reportNum={reportNum} ready={disk.exists} trackerMarked={trackerMarkedPdf} />
-                <ApplyButton n={id} url={applyUrl} company={companyName} pdfReady={applyPdfReady} quiet={quietApply} />
-                {coverReady && (
-                  <a
-                    href={`/api/cover-pdf?application=${encodeURIComponent(id)}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center justify-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-800 transition-colors hover:bg-emerald-500/15 dark:text-emerald-400 max-sm:min-h-[44px]"
-                  >
-                    <FileText className="size-3.5" /> View cover
-                  </a>
-                )}
-                {disk.note && <p className="basis-full text-sm text-muted">{disk.note}</p>}
+                <div className="divide-y divide-border rounded-2xl border border-border bg-surface/60">
+                  <ActionRow label="Prepare" hint="Uses your AI tokens">
+                    {spend.generateCv && (
+                      <GeneratePdfButton n={id} company={app?.company || meta?.title || id} onDisk={disk.exists} />
+                    )}
+                    {spend.generateCv && app && report && <LatexCvButton n={id} />}
+                    {app && report && <CoverDraftButton n={id} company={companyName} />}
+                    {app && report && (
+                      <EvaluateCompanyButton n={id} company={companyName} hasResearch={!!companyResearch} />
+                    )}
+                  </ActionRow>
+                  {spend.generateCv && disk.exists && (
+                    <ActionRow label="Your CV">
+                      <CvFileActions n={id} company={app?.company || meta?.title || id} onDisk={disk.exists} />
+                    </ActionRow>
+                  )}
+                  <ActionRow label="Apply">
+                    {spend.checklist && applyHref && (
+                      <Link href={applyHref} className={btn}>
+                        Apply checklist
+                      </Link>
+                    )}
+                    <ApplyButton n={id} url={applyUrl} company={companyName} pdfReady={applyPdfReady} quiet={quietApply} />
+                  </ActionRow>
+                  <ActionRow label="Files">
+                    <DownloadLastCv />
+                    <MarkPdfReadyButton reportNum={reportNum} ready={disk.exists} trackerMarked={trackerMarkedPdf} />
+                    {coverReady && (
+                      <a
+                        href={`/api/cover-pdf?application=${encodeURIComponent(id)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={btnDone}
+                      >
+                        <FileText className="size-3.5" /> View cover
+                      </a>
+                    )}
+                  </ActionRow>
+                </div>
+                {disk.note && <p className="text-sm text-muted">{disk.note}</p>}
               </div>
+              {companyResearch && <CompanyResearchPanel n={id} company={companyName} markdown={companyResearch.markdown} at={companyResearch.at} />}
+              {spend.generateCv && app && report && (
+                <CvInstructionBox n={id} company={app.company || meta?.title || id} />
+              )}
+              </>
             );
             if (sections.length === 0) {
               return (
-                <div className="mt-8 max-w-4xl">
+                <div className="mt-8">
                   {callout}
                   {actions}
                   {app && canDelete && (
@@ -217,7 +260,7 @@ export function ReportView({
               );
             }
             return (
-              <div className="mt-8 max-w-4xl">
+              <div className="mt-8">
                 {callout}
                 {actions}
                 {app && canDelete && (
