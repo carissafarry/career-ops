@@ -93,8 +93,10 @@ export async function POST(_req: Request, { params }: RouteContext) {
     // The runner's own error is its last stderr line; anything Node printed
     // before it (warnings) is not the cause.
     const message = stderrCause(result.stderr) || "Scan failed.";
-    const status = /lock timeout/i.test(message) ? 409 : 500;
-    return NextResponse.json({ error: message }, { status });
+    if (/lock timeout/i.test(message)) {
+      return NextResponse.json({ error: "Another scan is still running. Wait for it to finish, then press Run now again." }, { status: 409 });
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 
   try {
