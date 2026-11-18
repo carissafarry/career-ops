@@ -3,7 +3,7 @@ import { getNormalizeTextKey } from "@/lib/core/text-key";
 import { getAggregatorRule } from "@/lib/core/aggregator-id";
 import { evaluatedKeys, isEvaluated } from "@/lib/whats-new-suppression.mjs";
 import type { DiscoveredOffer } from "@/lib/explore";
-import { collectWhatsNew, resolveOfferLimit } from "@/lib/whats-new.mjs";
+import { collectWhatsNew, POSTED_AT_COLUMN, postedTimestamp, resolveOfferLimit } from "@/lib/whats-new.mjs";
 import { rankOffers } from "@/lib/core/inbox-rank.mjs";
 import { loadFitTargets } from "@/lib/inbox-fit-profile.mjs";
 import { loadWorkplacePolicy } from "@/lib/core/workplace-policy.mjs";
@@ -66,7 +66,8 @@ export async function GET(req: Request) {
       company: (company || "").trim(),
       title: (title || "").trim(),
       location: (location || "").trim(),
-      postedAt: /^\d{4}-\d{2}-\d{2}$/.test(firstSeen || "") ? firstSeen : "",
+      // The date the employer posted it; first seen by a scan only when that is unknown.
+      postedAt: postedTimestamp(c[POSTED_AT_COLUMN]) !== null ? c[POSTED_AT_COLUMN].trim() : /^\d{4}-\d{2}-\d{2}$/.test(firstSeen || "") ? firstSeen : "",
       ats: (portal || "").replace(/-full$/, "").trim() || "other",
       source: "whats-new",
     };

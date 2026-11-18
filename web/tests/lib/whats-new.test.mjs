@@ -4,6 +4,7 @@ import {
   DEFAULT_OFFER_LIMIT,
   MAX_OFFER_LIMIT,
   collectWhatsNew,
+  postedTimestamp,
   resolveOfferLimit,
 } from "../../src/lib/whats-new.mjs";
 
@@ -164,4 +165,44 @@ test("the Explore limit still returns the complete count", () => {
 
   assert.equal(result.offers.length, MAX_OFFER_LIMIT);
   assert.equal(result.count, MAX_OFFER_LIMIT + 40);
+});
+
+const wideHeader = `${header}\tfingerprint\tposted_at`;
+const wideRow = (url, firstSeen, posted) => `${url}\t${firstSeen}\ttest\tRole\tAcme\tadded\tRemote\tfp\t${posted}`;
+
+test("a role is as fresh as its posting date, not the day a scan first saw it", () => {
+  const rows = [
+    wideHeader,
+    wideRow("https://example.com/old", "2026-08-10", "2026-06-01"), // seen this week, posted months ago
+    wideRow("https://example.com/new", "2026-08-10", "2026-08-09"),
+  ];
+  const result = collectWhatsNew(rows, { cutoff: Date.parse("2026-08-03"), toOffer });
+  assert.deepEqual(result.offers.map((o) => o.url), ["https://example.com/new"]);
+  assert.equal(result.count, 1);
+});
+
+test("a role posted this week counts even when the scan first saw it earlier", () => {
+  const rows = [wideHeader, wideRow("https://example.com/a", "2026-07-01", "2026-08-09")];
+  const result = collectWhatsNew(rows, { cutoff: Date.parse("2026-08-03"), toOffer });
+  assert.equal(result.count, 1);
+});
+
+test("a row with no usable posting date falls back to first_seen", () => {
+  const rows = [
+    wideHeader,
+    wideRow("https://example.com/none", "2026-08-10", ""),
+    wideRow("https://example.com/junk", "2026-08-10", "recently"),
+    wideRow("https://example.com/stale", "2026-07-01", ""),
+  ];
+  const result = collectWhatsNew(rows, { cutoff: Date.parse("2026-08-03"), toOffer });
+  assert.deepEqual(result.offers.map((o) => o.url).sort(), ["https://example.com/junk", "https://example.com/none"]);
+});
+
+test("only a plain date is a posting date", () => {
+  assert.equal(postedTimestamp("2026-08-09"), Date.parse("2026-08-09T00:00:00Z"));
+  assert.equal(postedTimestamp(" 2026-08-09 "), Date.parse("2026-08-09T00:00:00Z"));
+  assert.equal(postedTimestamp(""), null);
+  assert.equal(postedTimestamp(undefined), null);
+  assert.equal(postedTimestamp("2026-08-09T10:00:00Z"), null);
+  assert.equal(postedTimestamp("2026-13-45"), null);
 });

@@ -43,6 +43,23 @@ export function resolveOfferLimit(raw) {
  */
 const EXPIRED_STATUS = /expired/i;
 
+/** Column index of `posted_at` in scan-history.tsv: the date the employer posted the role. */
+export const POSTED_AT_COLUMN = 8;
+
+/**
+ * The posting date a row carries, as a timestamp, or null when it has none. Only a plain
+ * YYYY-MM-DD counts; anything else means "not known" and the caller falls back to first_seen.
+ *
+ * @param {string | undefined} value
+ * @returns {number | null}
+ */
+export function postedTimestamp(value) {
+  const text = (value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+  const ms = Date.parse(`${text}T00:00:00Z`);
+  return Number.isFinite(ms) ? ms : null;
+}
+
 /**
  * Collect fresh, unique offers while keeping the response payload bounded.
  * `count` always represents the full result set; `offers` is only the slice the
@@ -79,8 +96,11 @@ export function collectWhatsNew(rows, { cutoff, toOffer, offerLimit = DEFAULT_OF
   // number of cards returned to the client.
   for (let i = rows.length - 1; i >= 1; i--) {
     const columns = rows[i].split("\t");
-    const timestamp = Date.parse(columns[1] || "");
-    if (Number.isFinite(timestamp)) anyDated = true;
+    const seenAt = Date.parse(columns[1] || "");
+    if (Number.isFinite(seenAt)) anyDated = true;
+    // A role is as fresh as its posting date. Only a row with no usable posting date
+    // is judged by when the scanner first saw it.
+    const timestamp = postedTimestamp(columns[POSTED_AT_COLUMN]) ?? seenAt;
     if (!Number.isFinite(timestamp) || timestamp < cutoff) continue;
     add(columns, offerLimit);
   }
