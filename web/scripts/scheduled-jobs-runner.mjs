@@ -12,6 +12,7 @@ import {
   withScheduledStore,
 } from "../src/lib/scheduled-jobs-store.mjs";
 import { nextScheduledRun } from "../src/lib/scheduled-cadence.mjs";
+import { BOARD_ENTRIES, isBoardSource } from "../src/lib/board-sources.mjs";
 import { isMainModule } from "../../lib/is-main-module.mjs";
 import { scheduledRunnerResourcePath, scheduledStorePath } from "../src/lib/scheduled-runner-path.mjs";
 import { getCareerOpsRoot } from "../../path-resolver.mjs";
@@ -120,9 +121,10 @@ export function buildScanCommand(job) {
     };
   }
 
-  const ats = Array.isArray(filters.ats) && filters.ats.length
-    ? filters.ats.join(",")
-    : "greenhouse,lever,ashby,workday";
+  // scan-ats-full.mjs only walks company ATS datasets; the job boards in the same list are
+  // read by their own pass (executeJob), so they are never handed to it.
+  const companyAts = Array.isArray(filters.ats) ? filters.ats.filter((id) => !isBoardSource(id)) : [];
+  const ats = companyAts.length ? companyAts.join(",") : "greenhouse,lever,ashby,workday";
   const limit = numericFilter(filters.limitPerAts, 150, 50, 500);
   return {
     script: "scan-ats-full.mjs",
@@ -143,7 +145,46 @@ export function extractRolesFound(engine, stdout) {
   return match ? Number(match[1]) : 0;
 }
 
-function writeJobPortals(root, job) {
+/** The job boards (Jobstreet, Kalibrr, ...) a job's source list holds. */
+export function selectedBoards(filters) {
+  return Array.isArray(filters?.ats) ? [...new Set(filters.ats.filter((id) => isBoardSource(id)))] : [];
+}
+
+function companyAtsOf(filters) {
+  return Array.isArray(filters?.ats) ? filters.ats.filter((id) => !isBoardSource(id)) : [];
+}
+
+const BOARD_MAX_TERMS = 6;
+
+/**
+ * The job_boards entries scan.mjs reads for these boards. A board that takes a search
+ * phrase gets one entry per "Roles to find" word (none = the whole board), the same
+ * way Explore reads it; the rest are read whole.
+ */
+export function boardEntries(boards, filters) {
+  const sinceDays = numericFilter(filters?.sinceDays, 7, 1);
+  const terms = [...new Set((Array.isArray(filters?.positive) ? filters.positive : [])
+    .filter((value) => typeof value === "string" && value.trim())
+    .map((value) => value.trim()))].slice(0, BOARD_MAX_TERMS);
+  const entries = [];
+  for (const id of boards) {
+    const { name, search, maxPages, ...rest } = BOARD_ENTRIES[id];
+    const queries = search ? (terms.length ? terms : [""]) : [""];
+    for (const query of queries) {
+      entries.push({
+        ...rest,
+        name: query ? `${name} (${query})` : name,
+        ...(maxPages ? { max_pages: maxPages } : {}),
+        ...(search ? { searchKeywords: query } : {}),
+        dateRange: sinceDays,
+        enabled: true,
+      });
+    }
+  }
+  return entries;
+}
+
+function writeJobPortals(root, job, options = {}) {
   if (!isSafeScheduledId(job.id)) throw new Error("Invalid scheduled job identifier.");
   const portalsPath = path.join(root, "portals.yml");
   const base = yaml.load(fs.readFileSync(portalsPath, "utf8"));
@@ -172,6 +213,11 @@ function writeJobPortals(root, job) {
     block_hard: Array.isArray(filters.blockHard) ? filters.blockHard : [],
     always_allow: Array.isArray(filters.alwaysAllow) ? filters.alwaysAllow : [],
   };
+  // A job-board pass reads only the job's boards, not the companies in portals.yml.
+  if (options.boards) {
+    base.tracked_companies = [];
+    base.job_boards = options.boards;
+  }
 
   const tempDir = path.join(root, "data", "tmp");
   fs.mkdirSync(tempDir, { recursive: true });
@@ -275,7 +321,91 @@ function outageStoppedResult(startedAt, attempt, parsed) {
  * not retried: the same sweep would hit the same limit, three times over.
  */
 
+function boardsPassMessage(rolesFound) {
+  return `Scan finished with ${rolesFound} matching role${rolesFound === 1 ? "" : "s"}.`;
+}
+
+/**
+ * Read the job's job boards with scan.mjs: the job's own title and location filters over
+ * a portals overlay that holds only those boards. scan.mjs applies every filter, skips what
+ * history already has, and writes the Inbox and scan history itself.
+ */
+function executeBoardsPass(root, job, boards, options = {}) {
+  const spawnFn = options.spawnFn || spawnSync;
+  const startedAt = Date.now();
+  const sinceDays = numericFilter(job.filters?.sinceDays, 7, 1);
+  let lastError = "Job board scan failed";
+  let finalAttempt = MAX_ATTEMPTS;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+    let tempPortals = null;
+    try {
+      tempPortals = writeJobPortals(root, job, { boards: boardEntries(boards, job.filters || {}) });
+      const result = spawnFn(
+        process.execPath,
+        ["scan.mjs", "--since", String(sinceDays), "--quiet"],
+        {
+          cwd: CODE_ROOT,
+          env: {
+            ...process.env,
+            CAREER_OPS_ROOT: root,
+            CAREER_OPS_PORTALS: tempPortals,
+            ...(process.env.CAREER_OPS_PROFILE?.trim() ? { CAREER_OPS_PROFILE: getProfilePath(root) } : {}),
+          },
+          encoding: "utf8",
+          timeout: SCAN_TIMEOUT_MS,
+          maxBuffer: MAX_OUTPUT_BYTES,
+          windowsHide: true,
+        },
+      );
+      if (result.status === 0) {
+        const rolesFound = extractRolesFound("portals", result.stdout || "");
+        return { state: "success", attempt, rolesFound, durationMs: Date.now() - startedAt, message: boardsPassMessage(rolesFound) };
+      }
+      lastError = scanFailureMessage(result, { timeoutMs: SCAN_TIMEOUT_MS });
+      if (result.error?.code === "ETIMEDOUT") {
+        finalAttempt = attempt;
+        break;
+      }
+    } catch (error) {
+      lastError = scanFailureMessage({ error });
+    } finally {
+      if (tempPortals) {
+        try {
+          fs.rmSync(tempPortals, { force: true });
+        } catch {
+          // Temporary filter cleanup is best effort.
+        }
+      }
+    }
+  }
+  return { state: "failed", attempt: finalAttempt, rolesFound: 0, durationMs: Date.now() - startedAt, message: lastError };
+}
+
+/**
+ * Run a job. A full scan with job boards among its sources runs the company ATS sweep (when
+ * any company ATS is selected) and then a job-board pass; the two results are reported as one.
+ */
 export function executeJob(root, job, options = {}) {
+  const boards = (job.engine || "full") === "full" ? selectedBoards(job.filters) : [];
+  if (boards.length === 0) return executeAtsJob(root, job, options);
+  const startedAt = Date.now();
+  const ats = companyAtsOf(job.filters).length > 0 ? executeAtsJob(root, job, options) : null;
+  const board = executeBoardsPass(root, job, boards, options);
+  const rolesFound = (ats?.rolesFound ?? 0) + board.rolesFound;
+  const ok = (!ats || ats.state === "success") && board.state === "success";
+  const summary = ok
+    ? `Scan finished with ${rolesFound} matching role${rolesFound === 1 ? "" : "s"}${ats ? ` (company boards ${ats.rolesFound}, job boards ${board.rolesFound})` : " (job boards)"}.`
+    : [ats && `Company boards: ${ats.message}`, `Job boards: ${board.message}`].filter(Boolean).join(" ");
+  return {
+    state: ok ? "success" : "failed",
+    attempt: Math.max(ats?.attempt ?? 1, board.attempt),
+    rolesFound,
+    durationMs: Date.now() - startedAt,
+    message: summary,
+  };
+}
+
+function executeAtsJob(root, job, options = {}) {
   const spawnFn = options.spawnFn || spawnSync;
   const startedAt = Date.now();
   let lastError = "Scan failed";

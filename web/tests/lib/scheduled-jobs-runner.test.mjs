@@ -17,7 +17,9 @@ import {
   withScheduledStore,
 } from "../../src/lib/scheduled-jobs-store.mjs";
 import {
+  boardEntries,
   buildScanCommand,
+  selectedBoards,
   claimDueJob,
   claimManualJob,
   enqueueDueJobs,
@@ -998,6 +1000,112 @@ test("a resolver outage is an incomplete sweep, and a missed checkpoint does not
     assert.equal(unsaved.state, "failed");
     assert.equal(unsaved.rolesFound, 0);
     assert.equal(unsaved.message, "Resolver stopped the sweep. 2 matching roles were not saved.");
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test("a full scan never passes job boards to scan-ats-full", () => {
+  const boards = ["jobstreet", "kalibrr", "glints", "techinasia", "himalayas", "remotive", "workingnomads", "jobicy", "weworkremotely", "remoteok"];
+  const mixed = buildScanCommand({ engine: "full", filters: { ats: ["greenhouse", ...boards, "lever"] } }).args;
+  assert.equal(mixed[mixed.indexOf("--ats") + 1], "greenhouse,lever");
+  // Boards only: the default company sources, not an empty list.
+  const only = buildScanCommand({ engine: "full", filters: { ats: boards } }).args;
+  assert.equal(only[only.indexOf("--ats") + 1], "greenhouse,lever,ashby,workday");
+});
+
+const BOARD_JOB = {
+  id: "33333333-3333-4333-8333-333333333333",
+  engine: "full",
+  filters: { positive: ["Management Trainee", "Application Developer"], allow: ["Indonesia"], ats: ["greenhouse", "jobstreet", "kalibrr", "himalayas"], sinceDays: 7 },
+};
+
+test("job boards are told apart from company sources and become scan.mjs board entries", () => {
+  assert.deepEqual(selectedBoards(BOARD_JOB.filters), ["jobstreet", "kalibrr", "himalayas"]);
+  assert.deepEqual(selectedBoards({ ats: ["greenhouse"] }), []);
+  const entries = boardEntries(["jobstreet", "himalayas"], BOARD_JOB.filters);
+  // A searchable board gets one entry per role word; a whole-feed board gets one.
+  assert.deepEqual(entries.map((e) => e.name), ["Jobstreet (Management Trainee)", "Jobstreet (Application Developer)", "Himalayas"]);
+  assert.equal(entries[0].searchKeywords, "Management Trainee");
+  assert.equal(entries[0].provider, "jobstreet");
+  assert.equal(entries[0].dateRange, 7);
+  assert.equal(entries[2].searchKeywords, undefined);
+});
+
+test("a full scan with job boards sweeps company sources, then reads the boards with scan.mjs", () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "career-ops-scheduled-boards-"));
+  fs.writeFileSync(path.join(temp, "portals.yml"), "title_filter:\n  positive: [engineer]\ntracked_companies:\n  - name: Acme\n    careers_url: https://x.test\nlocation_filter: {}\n", "utf8");
+  try {
+    const calls = [];
+    const result = executeJob(temp, BOARD_JOB, {
+      spawnFn: (_node, args, options) => {
+        const overlay = yaml.load(fs.readFileSync(options.env.CAREER_OPS_PORTALS, "utf8"));
+        calls.push({ script: args[0], args, overlay });
+        return args[0] === "scan-ats-full.mjs"
+          ? { status: 0, stdout: JSON.stringify({ postingsKept: 4 }), stderr: "" }
+          : { status: 0, stdout: "New offers added: 3\n", stderr: "" };
+      },
+    });
+    assert.deepEqual(calls.map((c) => c.script), ["scan-ats-full.mjs", "scan.mjs"]);
+    const ats = calls[0].args;
+    assert.equal(ats[ats.indexOf("--ats") + 1], "greenhouse");
+    const boards = calls[1].overlay;
+    assert.deepEqual(boards.tracked_companies, []);
+    assert.ok(boards.job_boards.some((e) => e.provider === "jobstreet" && e.searchKeywords === "Application Developer"));
+    assert.deepEqual(boards.title_filter.positive, ["Management Trainee", "Application Developer"]);
+    assert.deepEqual(boards.location_filter.allow, ["Indonesia"]);
+    assert.equal(result.state, "success");
+    assert.equal(result.rolesFound, 7);
+    assert.match(result.message, /7 matching roles \(company boards 4, job boards 3\)/);
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test("a full scan with only job boards skips the company sweep", () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "career-ops-scheduled-boards-only-"));
+  fs.writeFileSync(path.join(temp, "portals.yml"), "title_filter:\n  positive: [engineer]\nlocation_filter: {}\n", "utf8");
+  try {
+    const scripts = [];
+    const result = executeJob(temp, { ...BOARD_JOB, filters: { ...BOARD_JOB.filters, ats: ["jobstreet"] } }, {
+      spawnFn: (_node, args) => (scripts.push(args[0]), { status: 0, stdout: "New offers added: 1\n", stderr: "" }),
+    });
+    assert.deepEqual(scripts, ["scan.mjs"]);
+    assert.equal(result.state, "success");
+    assert.equal(result.rolesFound, 1);
+    assert.match(result.message, /\(job boards\)/);
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test("when the board pass fails the saved company roles are still counted and the run is failed", () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "career-ops-scheduled-boards-fail-"));
+  fs.writeFileSync(path.join(temp, "portals.yml"), "title_filter:\n  positive: [engineer]\nlocation_filter: {}\n", "utf8");
+  try {
+    const result = executeJob(temp, BOARD_JOB, {
+      spawnFn: (_node, args) => (args[0] === "scan-ats-full.mjs"
+        ? { status: 0, stdout: JSON.stringify({ postingsKept: 2 }), stderr: "" }
+        : { status: 1, stdout: "", stderr: "every scan target failed" }),
+    });
+    assert.equal(result.state, "failed");
+    assert.equal(result.rolesFound, 2);
+    assert.match(result.message, /Company boards: Scan finished with 2/);
+    assert.match(result.message, /Job boards:/);
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test("a full scan without job boards still runs only the company sweep", () => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), "career-ops-scheduled-no-boards-"));
+  fs.writeFileSync(path.join(temp, "portals.yml"), "title_filter:\n  positive: [engineer]\nlocation_filter: {}\n", "utf8");
+  try {
+    const scripts = [];
+    executeJob(temp, { ...BOARD_JOB, filters: { ...BOARD_JOB.filters, ats: ["greenhouse"] } }, {
+      spawnFn: (_node, args) => (scripts.push(args[0]), { status: 0, stdout: JSON.stringify({ postingsKept: 0 }), stderr: "" }),
+    });
+    assert.deepEqual(scripts, ["scan-ats-full.mjs"]);
   } finally {
     fs.rmSync(temp, { recursive: true, force: true });
   }
