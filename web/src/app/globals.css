@@ -141,6 +141,23 @@ html {
 }
 
 @layer base {
+  /* Tailwind 4 stops buttons from showing the pointer cursor. Restore it for
+     everything clickable on every page; a disabled control says so instead. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"],
+  summary,
+  select:not(:disabled),
+  label[for],
+  input:is([type="button"], [type="submit"], [type="reset"], [type="checkbox"], [type="radio"], [type="file"]):not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
   /* .font-display headings: bold, slightly tight geometric sans. In the base
      layer so any font-weight / tracking utility on the element still wins. */
   .font-display {

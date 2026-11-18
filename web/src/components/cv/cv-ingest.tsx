@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
+import { markdownLinks } from "@/components/markdown-link";
 import remarkGfm from "remark-gfm";
 import { noMarkdownImages } from "@/lib/markdown-options.mjs";
 import { Upload, FileText, Loader2, Check, AlertTriangle, Lock, ArrowRight, RotateCcw } from "lucide-react";
@@ -443,7 +444,7 @@ export function CvIngest({ onSaved, onSavingChange, variant = "onboarding" }: { 
           className="h-72 w-full resize-none rounded-lg border border-border bg-surface p-3 font-mono text-xs leading-relaxed outline-none focus:border-brand/40"
         />
         <div className="prose prose-sm dark:prose-invert h-72 max-w-none [&_p]:whitespace-pre-line overflow-y-auto rounded-lg border border-border bg-surface p-3 text-[14px]">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} {...noMarkdownImages}>{md}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownLinks} {...noMarkdownImages}>{md}</ReactMarkdown>
         </div>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-3">

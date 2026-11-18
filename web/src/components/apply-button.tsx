@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Send } from "lucide-react";
 import { useApply } from "@/components/apply/apply-provider";
+import { btn, btnPrimary } from "@/lib/action-styles";
 import { applyDestination, applyOpenArgs } from "@/lib/apply-destination.mjs";
 
 export function useStartApply() {
@@ -53,11 +54,7 @@ export function ApplyButton({
     <button
       type="button"
       onClick={() => start(dest, company)}
-      className={
-        quiet
-          ? "inline-flex items-center justify-center gap-1.5 rounded-full border border-border bg-transparent px-3.5 py-1 text-xs font-medium text-muted transition-colors hover:border-foreground/20 hover:text-foreground max-sm:min-h-[44px]"
-          : "inline-flex items-center justify-center gap-1.5 rounded-full bg-brand px-3.5 py-1 text-xs font-medium text-brand-foreground shadow-sm transition-colors hover:bg-brand-200 max-sm:min-h-[44px]"
-      }
+      className={quiet ? btn : btnPrimary}
       title={
         quiet
           ? "Below the apply line or flagged caution. Opens the form pre-filled. You review and submit it yourself."

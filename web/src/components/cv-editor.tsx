@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useReducer, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { markdownLinks } from "@/components/markdown-link";
 import { SkillGaps } from "@/components/skill-gaps";
 import remarkGfm from "remark-gfm";
 import { noMarkdownImages } from "@/lib/markdown-options.mjs";
@@ -246,7 +247,7 @@ export function CvEditor() {
           />
           <article className="report-prose min-h-[60vh] [&_p]:whitespace-pre-line overflow-auto rounded-2xl border border-border bg-surface shadow-card p-5">
             {state.content.trim() ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]} {...noMarkdownImages}>{state.content}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownLinks} {...noMarkdownImages}>{state.content}</ReactMarkdown>
             ) : (
               <p className="text-muted">Preview appears here.</p>
             )}

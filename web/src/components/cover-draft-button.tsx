@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { FileText, Loader2, Mail, RotateCcw, TriangleAlert } from "lucide-react";
 import { useJobs } from "@/components/jobs/job-store";
+import { btn, btnBusy, btnDone, btnPrimary } from "@/lib/action-styles";
 import { CostBadge } from "@/components/cost/cost-badge";
 import { coverDraftButtonState } from "@/lib/pdf-button-state.mjs";
 import { COVER_TONES } from "@/lib/cover-tones.mjs";
@@ -46,7 +47,7 @@ export function CoverDraftButton({ n, company }: { n: string; company: string })
 
   if (state.kind === "running")
     return (
-      <Link href={`/jobs/${state.jobId}${jobQuery}`} className="inline-flex items-center justify-center gap-1.5 rounded-full border border-brand/40 bg-brand-soft px-3 py-1 text-xs font-medium text-brand-text max-sm:min-h-[44px]">
+      <Link href={`/jobs/${state.jobId}${jobQuery}`} className={btnBusy}>
         <Loader2 className="size-3.5 motion-safe:animate-spin" /> Drafting cover letter…
       </Link>
     );
@@ -54,10 +55,10 @@ export function CoverDraftButton({ n, company }: { n: string; company: string })
   return (
     <>
       {state.kind === "ready" && job ? (
-        <span className="inline-flex items-center gap-1">
+        <span className="inline-flex items-center gap-2">
           <Link
             href={`/jobs/${job.id}${jobQuery}`}
-            className="inline-flex items-center justify-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-800 transition-colors hover:bg-emerald-500/15 dark:text-emerald-400 max-sm:min-h-[44px]"
+            className={btnDone}
           >
             <FileText className="size-3.5" /> View cover letter draft
           </Link>
@@ -65,16 +66,16 @@ export function CoverDraftButton({ n, company }: { n: string; company: string })
             onClick={() => setOpen((o) => !o)}
             title="Draft the cover letter again"
             aria-expanded={open}
-            className="inline-flex items-center justify-center rounded-full p-1 text-faint transition-colors hover:text-brand-text max-sm:min-h-[44px] max-sm:min-w-[44px]"
+            className={btn}
           >
-            <RotateCcw className="size-3" />
+            <RotateCcw className="size-3.5" /> Draft again
           </button>
         </span>
       ) : (
         <button
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
-          className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs font-medium text-muted transition-colors hover:border-brand/40 hover:text-brand-text max-sm:min-h-[44px]"
+          className={btn}
           title="Draft a cover letter for this role with your AI CLI"
         >
           <Mail className="size-3.5" /> Draft cover letter
@@ -109,7 +110,7 @@ export function CoverDraftButton({ n, company }: { n: string; company: string })
             </select>
           </label>
           <div className="flex flex-wrap items-center gap-2">
-            <button type="submit" className="inline-flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-xs font-medium text-brand-foreground shadow-sm transition-colors hover:bg-brand-200 max-sm:min-h-[44px]">
+            <button type="submit" className={btnPrimary}>
               <Mail className="size-3.5" /> Draft letter
             </button>
             <CostBadge kind="spend" size="xs" />
