@@ -12,6 +12,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { isMainModule } from "../lib/is-main-module.mjs";
 
 const AGENTS = [
   { label: "io.career-ops.scheduled-scan", what: "Scan worker (checks every 2 minutes)" },
@@ -154,7 +155,7 @@ async function main() {
   console.log(out.join("\n"));
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+if (isMainModule(import.meta.url)) {
   main().catch((error) => {
     console.error(`career-ops-status: ${error.message}`);
     process.exit(1);

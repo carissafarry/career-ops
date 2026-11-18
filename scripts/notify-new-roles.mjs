@@ -20,6 +20,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { isMainModule } from "../lib/is-main-module.mjs";
 
 const DEFAULT_URL = "http://127.0.0.1:3000/pipeline";
 const TITLE = "career-ops";
@@ -143,7 +144,7 @@ async function main() {
   save(next);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+if (isMainModule(import.meta.url)) {
   main().catch((error) => {
     console.error(`notify-new-roles: ${error.message}`);
     process.exit(1);
