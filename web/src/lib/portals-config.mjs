@@ -177,6 +177,108 @@ export function patchPortalFiltersText(source, roles, locations) {
   }
 }
 
+export const CONTENT_KEYS = ["positive", "negative"];
+
+/** An entry as a person reads it: the `word:` / `stem:` prefix is how it matches, not what it is. */
+export function splitContentEntry(entry) {
+  const m = /^(word|stem):(.*)$/i.exec(String(entry).trim());
+  return m ? { mode: m[1].toLowerCase(), text: m[2].trim() } : { mode: "", text: String(entry).trim() };
+}
+
+const sameEntry = (a, b) => String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+
+/** The string a list item line holds (`- "word:crm"  # note`), or null for any other shape. */
+function itemValue(line) {
+  if (!line.trimStart().startsWith("- ")) return null;
+  try {
+    const parsed = yaml.load(line.trim());
+    return Array.isArray(parsed) && parsed.length === 1 && typeof parsed[0] === "string" ? parsed[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * portals.yml text with entries added to, and removed from, `content_filter.<key>`
+ * (the lists that read a posting's description). Line by line, so every comment,
+ * every other list and every commented-out company stays byte-for-byte; new entries
+ * go after the list's last item and removed ones lose only their own line. Returns
+ * null for a shape this edit does not handle (flow style, a scalar), or when the
+ * result would not parse to exactly the intended change, so the caller refuses
+ * instead of rewriting the file.
+ *
+ * @param {string} source
+ * @param {"positive" | "negative"} key
+ * @param {{ add?: string[], remove?: string[] }} change
+ * @returns {string | null}
+ */
+export function editContentFilterText(source, key, { add = [], remove = [] } = {}) {
+  if (!CONTENT_KEYS.includes(key)) return null;
+  const eol = source.includes("\r\n") ? "\r\n" : "\n";
+  const lines = source.split(/\r?\n/);
+  const head = lines.findIndex((l) => /^content_filter:\s*(#.*)?$/.test(l));
+  if (head < 0 && lines.some((l) => l.startsWith("content_filter:"))) return null;
+
+  let doc;
+  try {
+    doc = yaml.load(source);
+  } catch {
+    return null;
+  }
+  if (!isMapping(doc)) return null;
+  const section = isMapping(doc.content_filter) ? doc.content_filter : {};
+  const current = Array.isArray(section[key]) ? section[key] : [];
+  if (section[key] !== undefined && !Array.isArray(section[key])) return null;
+  const toAdd = add.filter((e, i) => !current.some((c) => sameEntry(c, e)) && add.findIndex((x) => sameEntry(x, e)) === i);
+  const expectedList = [...current.filter((c) => !remove.some((r) => sameEntry(c, r))), ...toAdd];
+
+  if (head < 0) {
+    if (toAdd.length === 0) return source;
+    while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
+    lines.push("content_filter:", `  ${key}:`, ...toAdd.map((e) => `    - ${JSON.stringify(e)}`), "");
+  } else {
+    let end = head + 1;
+    while (end < lines.length && !isTopLevelKey(lines[end])) end++;
+    const child = lines.slice(head + 1, end).find((l) => !isNote(l));
+    const childIndent = child ? " ".repeat(indentOf(child)) : "  ";
+    const at = lines.findIndex((l, i) => i > head && i < end && l.startsWith(`${childIndent}${key}:`));
+    if (at < 0) {
+      if (toAdd.length) lines.splice(head + 1, 0, `${childIndent}${key}:`, ...toAdd.map((e) => `${childIndent}  - ${JSON.stringify(e)}`));
+    } else {
+      const value = lines[at].slice(childIndent.length + key.length + 1).replace(/\s+#.*$/, "").trim();
+      if (value !== "") return null; // flow style: `key: [a, b]`
+      let last = at;
+      const itemLines = [];
+      for (let i = at + 1; i < end; i++) {
+        if (isNote(lines[i])) continue;
+        const sameIndentItem = indentOf(lines[i]) === childIndent.length && lines[i].trimStart().startsWith("- ");
+        if (indentOf(lines[i]) <= childIndent.length && !sameIndentItem) break;
+        last = i;
+        itemLines.push(i);
+      }
+      const itemIndent = itemLines.length ? " ".repeat(indentOf(lines[itemLines[0]])) : `${childIndent}  `;
+      const drop = new Set(itemLines.filter((i) => {
+        const v = itemValue(lines[i]);
+        return v !== null && remove.some((r) => sameEntry(v, r));
+      }));
+      const kept = lines.slice(at + 1, last + 1).filter((_, i) => !drop.has(at + 1 + i));
+      lines.splice(at + 1, last - at, ...kept, ...toAdd.map((e) => `${itemIndent}- ${JSON.stringify(e)}`));
+    }
+  }
+
+  const text = lines.join(eol);
+  try {
+    const result = yaml.load(text);
+    // A list emptied of its last item stays as a bare `key:`, which reads back as null.
+    if (isMapping(result?.content_filter) && result.content_filter[key] === null) result.content_filter[key] = [];
+    const expected = { ...doc, content_filter: { ...section, [key]: expectedList } };
+    if (expectedList.length === 0 && section[key] === undefined) delete expected.content_filter[key];
+    return isDeepStrictEqual(result, expected) ? text : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * @typedef {{ name: string, enabled: boolean, host: string }} WatchedCompany
  */
