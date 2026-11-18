@@ -6,6 +6,7 @@ import { ATS_SOURCES } from "@/lib/explore";
 import { SENIORITY_ORDER, daysSince, seniorityFromTitle, sourceFromUrl, type Seniority } from "@/lib/inbox";
 import { locationMatches } from "@/lib/location-facet.mjs";
 import { FacetChips } from "@/components/inbox/facet-chips";
+import { useSourceFilter } from "@/lib/source-exclusions";
 
 export type ScanResultRow = {
   url: string;
@@ -57,9 +58,11 @@ export function ScanResults({ postings }: { postings: ScanResultRow[] }) {
     return SENIORITY_ORDER.filter((s) => present.has(s));
   }, [enriched]);
 
+  const { isHidden } = useSourceFilter("scans");
   const filtered = useMemo(
     () =>
       enriched.filter((e) => {
+        if (isHidden(e.posting.url)) return false;
         if (within != null && (e.age == null || e.age > within)) return false;
         if (sources.size && (!e.source || !sources.has(e.source))) return false;
         if (seniorities.size && (!e.seniority || !seniorities.has(e.seniority))) return false;
@@ -67,7 +70,7 @@ export function ScanResults({ postings }: { postings: ScanResultRow[] }) {
         if (kw.trim() && !`${e.posting.company} ${e.posting.role}`.toLowerCase().includes(kw.trim().toLowerCase())) return false;
         return true;
       }),
-    [enriched, within, sources, seniorities, locQ, kw],
+    [enriched, isHidden, within, sources, seniorities, locQ, kw],
   );
 
   const anyActive = within != null || sources.size > 0 || seniorities.size > 0 || locQ.trim() !== "" || kw.trim() !== "";
@@ -77,6 +80,7 @@ export function ScanResults({ postings }: { postings: ScanResultRow[] }) {
   return (
     <div className="mt-5 space-y-4">
       <FacetChips
+        sourceScope="scans"
         within={within}
         setWithin={setWithin}
         sources={sources}
@@ -89,8 +93,9 @@ export function ScanResults({ postings }: { postings: ScanResultRow[] }) {
         setKw={setKw}
         availSources={availSources}
         availSeniorities={availSeniorities}
+        allUrls={postings.map((p) => p.url)}
         resultCount={filtered.length}
-        totalCount={enriched.length}
+        totalCount={enriched.filter((e) => !isHidden(e.posting.url)).length}
         anyActive={anyActive}
         onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setKw(""); }}
       />

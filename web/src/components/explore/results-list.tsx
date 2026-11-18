@@ -7,6 +7,7 @@ import { ATS_SOURCES, type AtsSource, type DiscoveredOffer } from "@/lib/explore
 import { SENIORITY_ORDER, daysSince, seniorityFromTitle, sourceFromUrl, type Seniority } from "@/lib/inbox";
 import { locationMatches } from "@/lib/location-facet.mjs";
 import { FacetChips } from "@/components/inbox/facet-chips";
+import { useSourceFilter } from "@/lib/source-exclusions";
 import { CHINA_SOURCES } from "@/lib/employer-preset.mjs";
 import {
   DEFAULT_SORT,
@@ -71,10 +72,12 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
     for (const t of tagged) if (t.seniority) present.add(t.seniority);
     return SENIORITY_ORDER.filter((s) => present.has(s));
   }, [tagged]);
+  const { isHidden } = useSourceFilter("explore");
   const facetFiltered = useMemo(
     () =>
       tagged
         .filter((t) => {
+          if (isHidden(t.offer.url)) return false;
           if (!includePipeline && t.offer.inPipeline) return false;
           if (within != null && (t.age == null || t.age > within)) return false;
           if (sources.size && (!t.source || !sources.has(t.source))) return false;
@@ -83,7 +86,7 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
           return true;
         })
         .map((t) => t.offer),
-    [tagged, includePipeline, within, sources, seniorities, locQ],
+    [tagged, isHidden, includePipeline, within, sources, seniorities, locQ],
   );
   const facetActive = within != null || sources.size > 0 || seniorities.size > 0 || locQ.trim() !== "";
 
@@ -122,6 +125,7 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
   return (
     <div className="space-y-4">
       <FacetChips
+        sourceScope="explore"
         within={within}
         setWithin={setWithin}
         sources={sources}
@@ -134,8 +138,9 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
         setKw={setQ}
         availSources={availSources}
         availSeniorities={availSeniorities}
+        allUrls={offers.map((o) => o.url)}
         resultCount={view.length}
-        totalCount={includePipeline ? offers.length : offers.length - inPipelineCount}
+        totalCount={tagged.filter((t) => !isHidden(t.offer.url) && (includePipeline || !t.offer.inPipeline)).length}
         anyActive={facetActive || q.trim() !== ""}
         onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setQ(""); }}
       />

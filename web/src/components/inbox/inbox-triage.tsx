@@ -14,6 +14,7 @@ import { orderInbox } from "@/lib/core/inbox-rank.mjs";
 import { cursorAfterRemoval, inboxCommand, moveCursor, selectionWithout, typingFromTarget } from "@/lib/inbox-keys.mjs";
 import { inboxScoreTarget, skippableJobs } from "@/lib/inbox-score-target.mjs";
 import { FacetChips } from "./facet-chips";
+import { useSourceFilter } from "@/lib/source-exclusions";
 import type { ScanRunSummary } from "@/lib/scan-runs";
 import { scanLabel } from "@/lib/scan-runs-core.mjs";
 import { locationMatches } from "@/lib/location-facet.mjs";
@@ -185,10 +186,12 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
     return SENIORITY_ORDER.filter((s) => set.has(s));
   }, [enriched, hidden]);
 
+  const { isHidden } = useSourceFilter("inbox");
   const filtered = useMemo(
     () =>
       enriched.filter((e) => {
         if (hidden.includes(e.job.url)) return false;
+        if (isHidden(e.job.url)) return false;
         if (within != null && (e.age == null || e.age > within)) return false;
         if (sources.size && (!e.source || !sources.has(e.source))) return false;
         if (seniorities.size && (!e.seniority || !seniorities.has(e.seniority))) return false;
@@ -197,7 +200,7 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
         if (kw.trim() && !`${e.job.company} ${e.job.role}`.toLowerCase().includes(kw.trim().toLowerCase())) return false;
         return true;
       }),
-    [enriched, hidden, within, sources, seniorities, locQ, kw, scanId, scans],
+    [enriched, hidden, isHidden, within, sources, seniorities, locQ, kw, scanId, scans],
   );
 
   // Fit order lives in core/inbox-rank.mjs. This is the only sort.
@@ -441,6 +444,7 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
         </label>
       )}
       <FacetChips
+        sourceScope="inbox"
         within={within}
         setWithin={setWithin}
         sources={sources}
@@ -453,8 +457,9 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
         setKw={setKw}
         availSources={availSources}
         availSeniorities={availSeniorities}
+        allUrls={enriched.map((e) => e.job.url)}
         resultCount={filtered.length}
-        totalCount={enriched.length - hiddenCount}
+        totalCount={enriched.filter((e) => !hidden.includes(e.job.url) && !isHidden(e.job.url)).length}
         anyActive={anyFacet}
         onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setKw(""); setScanId(""); }}
       />

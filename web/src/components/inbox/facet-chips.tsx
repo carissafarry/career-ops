@@ -6,6 +6,8 @@ import { ATS_LABEL } from "@/lib/explore";
 import { FRESHNESS_WINDOWS, SENIORITY_LABEL, type Seniority } from "@/lib/inbox";
 import { CostBadge } from "@/components/cost/cost-badge";
 import { cn } from "@/lib/cn";
+import { SourceExclusionMenu } from "@/components/inbox/source-exclusion-menu";
+import type { SourceScope } from "@/lib/source-exclusions";
 
 // Free, client-side facets over the raw firehose — 0 tokens, instant. Mirrors the
 // Explore chip language so the two surfaces read as one system. On mobile the chip
@@ -23,6 +25,8 @@ export function FacetChips({
   setKw,
   availSources,
   availSeniorities,
+  allUrls,
+  sourceScope,
   resultCount,
   totalCount,
   anyActive,
@@ -40,6 +44,10 @@ export function FacetChips({
   setKw: (v: string) => void;
   availSources: AtsSource[];
   availSeniorities: Seniority[];
+  /** Every posting URL in the list, for the sites the exclusion menu offers. */
+  allUrls: string[];
+  /** Which page this list is on; each page keeps its own Sources choice. */
+  sourceScope: SourceScope;
   resultCount: number;
   totalCount: number;
   anyActive: boolean;
@@ -102,6 +110,8 @@ export function FacetChips({
           placeholder="Location or country"
           className="w-28 shrink-0 rounded-full border border-border bg-surface/40 px-3 text-xs outline-none transition-colors placeholder:text-faint focus:border-brand/40 max-sm:min-h-[44px] py-1"
         />
+
+        <SourceExclusionMenu urls={allUrls} scope={sourceScope} />
 
         {anyActive && (
           <button
