@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, CheckCircle2, Clock, Copy, Edit3, Globe, Info, Loader2, MoreVertical, Pause, Play, Trash2, Zap } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { AlertCircle, ArrowRight, CheckCircle2, Clock, Copy, Edit3, Globe, Info, Loader2, MoreVertical, Pause, Play, Trash2, Zap } from "lucide-react";
 import type { ScheduledJob } from "@/lib/scheduled-jobs";
 import { scanEngineLabel, scheduleCadenceLabel } from "@/lib/schedule-label.mjs";
 import { cn } from "@/lib/cn";
@@ -25,7 +27,10 @@ export function JobCard({
   /** Another scan holds the runner right now, so Run now would only fail. */
   scanRunning?: boolean;
 }) {
+  const router = useRouter();
   const [running, setRunning] = useState(false);
+  const [openingScan, setOpeningScan] = useState(false);
+  const [noScan, setNoScan] = useState(false);
   // The error the popup shows: the saved last error, or the one from this page's own Run now.
   const [detail, setDetail] = useState<{ message: string; at: string | null } | null>(null);
   const [runMessage, setRunMessage] = useState<string | null>(null);
@@ -68,6 +73,25 @@ export function JobCard({
       setRunError({ message: err instanceof Error ? err.message : "Run failed", at: new Date().toISOString() });
     } finally {
       setRunning(false);
+    }
+  };
+
+  // The scan page for this job's last run. A run that left no scan record has no page to open.
+  const seeLastScan = async () => {
+    setOpeningScan(true);
+    setNoScan(false);
+    try {
+      const res = await fetch(`/api/scheduled-jobs/${job.id}/last-scan`, { cache: "no-store" });
+      const data = (await res.json().catch(() => null)) as { scanId?: string | null } | null;
+      if (res.ok && data?.scanId) {
+        router.push(`/scans?run=${encodeURIComponent(data.scanId)}`);
+        return;
+      }
+      setNoScan(true);
+    } catch {
+      setNoScan(true);
+    } finally {
+      setOpeningScan(false);
     }
   };
 
@@ -209,6 +233,24 @@ export function JobCard({
             </p>
           ) : (
             <p className="text-faint">No runs recorded yet</p>
+          )}
+          {job.lastRunAt && (
+            <button
+              type="button"
+              onClick={() => void seeLastScan()}
+              disabled={openingScan}
+              className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-brand-text transition-colors hover:underline disabled:opacity-60 max-sm:min-h-[44px]"
+            >
+              {openingScan ? <Loader2 className="size-3 animate-spin" /> : null}
+              See last scan
+              {!openingScan && <ArrowRight className="size-3" />}
+            </button>
+          )}
+          {noScan && (
+            <p role="status" className="mt-1 text-faint">
+              The last run left no scan record to show.{" "}
+              <Link href="/scans" className="text-brand-text hover:underline">Open all scans</Link>
+            </p>
           )}
           {runMessage && <p className="mt-1 font-medium text-brand-text">{runMessage}</p>}
           {runError && (
