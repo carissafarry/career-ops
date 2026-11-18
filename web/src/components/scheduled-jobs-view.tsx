@@ -94,6 +94,41 @@ export function ScheduledJobsView() {
     void loadData();
   }, []);
 
+  // A scan that holds the runner makes Run now fail, and it can start without this page
+  // (the OS schedule, another tab). So the page asks again every few seconds, quietly, and
+  // shows when one is running. Nothing here shows the loading state or clears an error.
+  useEffect(() => {
+    let alive = true;
+    const poll = async () => {
+      if (document.hidden) return;
+      try {
+        const [jobsResponse, schedulerResponse] = await Promise.all([
+          fetch("/api/scheduled-jobs", { cache: "no-store" }),
+          fetch("/api/scheduler", { cache: "no-store" }),
+        ]);
+        if (!alive) return;
+        if (jobsResponse.ok) {
+          const body = await jobsResponse.json().catch(() => null);
+          if (alive && body) setStore({ jobs: Array.isArray(body.jobs) ? body.jobs : [], runs: Array.isArray(body.runs) ? body.runs : [] });
+        }
+        if (schedulerResponse.ok) {
+          const body = await schedulerResponse.json().catch(() => null);
+          if (alive && isSchedulerStatusPayload(body)) setScheduler(body as SchedulerStatus);
+        }
+      } catch {
+        /* the next poll tries again */
+      }
+    };
+    const timer = window.setInterval(() => void poll(), 6000);
+    const onVisible = () => void poll();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      alive = false;
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
+
   const handleToggleStatus = async (id: string, currentStatus: string) => {
     const nextStatus = currentStatus === "active" ? "paused" : "active";
     try {
@@ -167,6 +202,16 @@ export function ScheduledJobsView() {
 
   const osScheduler = scheduler ? OS_SCHEDULERS[scheduler.platform] : undefined;
 
+  // The runner lock says a scan is running; the run list names which job, when it can.
+  const runningNames = [...new Set(
+    store.runs
+      .filter((r) => r.state === "running")
+      .map((r) => jobsList.find((j) => j.id === r.jobId)?.name)
+      .filter((name): name is string => Boolean(name)),
+  )];
+  // Only the lock decides: it knows a dead runner is stale, a "running" row in the list does not.
+  const scanRunning = scheduler?.running === true;
+
   return (
     <div className={`mx-auto px-5 py-8 md:px-8 space-y-8 ${pageFrameWidthClass.wide}`}>
       {/* Header matching Explore & Portals format */}
@@ -210,6 +255,15 @@ export function ScheduledJobsView() {
         </div>
       </div>
       {error && <div role="alert" className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-600 dark:text-rose-400">{error}</div>}
+      {scanRunning && (
+        <div role="status" className="flex items-start gap-2.5 rounded-xl border border-brand/40 bg-brand-soft p-3 text-sm text-foreground">
+          <Loader2 className="mt-0.5 size-4 shrink-0 animate-spin text-brand-text" />
+          <p>
+            <span className="font-semibold">A scan is running now{runningNames.length ? `: ${runningNames.join(", ")}` : ""}.</span>{" "}
+            <span className="text-muted">Run now is paused until it finishes, because a second scan would fail. This page checks every few seconds.</span>
+          </p>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid gap-3.5 sm:grid-cols-4">
@@ -341,6 +395,7 @@ export function ScheduledJobsView() {
               }}
               onDelete={handleDelete}
               onRunFinished={loadData}
+              scanRunning={scanRunning}
             />
           ))}
         </div>

@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, CheckCircle2, Clock, Copy, Edit3, Globe, Loader2, MoreVertical, Pause, Play, Trash2, Zap } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, Copy, Edit3, Globe, Info, Loader2, MoreVertical, Pause, Play, Trash2, Zap } from "lucide-react";
 import type { ScheduledJob } from "@/lib/scheduled-jobs";
 import { scanEngineLabel, scheduleCadenceLabel } from "@/lib/schedule-label.mjs";
 import { cn } from "@/lib/cn";
+import { ErrorDetailModal } from "./error-detail-modal";
 
 export function JobCard({
   job,
@@ -13,6 +14,7 @@ export function JobCard({
   onCopy,
   onDelete,
   onRunFinished,
+  scanRunning = false,
 }: {
   job: ScheduledJob;
   onToggleStatus: (id: string, currentStatus: string) => void;
@@ -20,9 +22,14 @@ export function JobCard({
   onCopy: (job: ScheduledJob) => void;
   onDelete: (id: string) => void;
   onRunFinished: () => void;
+  /** Another scan holds the runner right now, so Run now would only fail. */
+  scanRunning?: boolean;
 }) {
   const [running, setRunning] = useState(false);
+  // The error the popup shows: the saved last error, or the one from this page's own Run now.
+  const [detail, setDetail] = useState<{ message: string; at: string | null } | null>(null);
   const [runMessage, setRunMessage] = useState<string | null>(null);
+  const [runError, setRunError] = useState<{ message: string; at: string } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -48,6 +55,7 @@ export function JobCard({
   const handleRunNow = async () => {
     setRunning(true);
     setRunMessage(null);
+    setRunError(null);
 
     try {
       const res = await fetch(`/api/scheduled-jobs/${job.id}/run`, { method: "POST" });
@@ -57,7 +65,7 @@ export function JobCard({
       setRunMessage(` Completed! Found ${data.rolesFound || 0} matching roles.`);
       onRunFinished();
     } catch (err) {
-      setRunMessage(` Error: ${err instanceof Error ? err.message : "Run failed"}`);
+      setRunError({ message: err instanceof Error ? err.message : "Run failed", at: new Date().toISOString() });
     } finally {
       setRunning(false);
     }
@@ -182,7 +190,16 @@ export function JobCard({
           {job.lastError ? (
             <p className="flex items-start gap-1.5 text-rose-500">
               <AlertCircle className="mt-0.5 size-3 shrink-0" />
-              <span className="truncate">Last error: {job.lastError}</span>
+              <span className="min-w-0 flex-1 truncate">Last error: {job.lastError}</span>
+              <button
+                type="button"
+                onClick={() => setDetail({ message: job.lastError ?? "", at: job.lastRunAt ?? null })}
+                aria-label={`Show the full error for ${job.name}`}
+                title="Show the full error"
+                className="-my-1 shrink-0 rounded p-1 text-rose-500 transition-colors hover:bg-rose-500/10 max-sm:min-h-[44px] max-sm:min-w-[44px]"
+              >
+                <Info className="mx-auto size-3.5" />
+              </button>
             </p>
           ) : job.lastRunAt ? (
             <p className="flex items-center gap-1.5 text-emerald-800 dark:text-emerald-400">
@@ -194,6 +211,21 @@ export function JobCard({
             <p className="text-faint">No runs recorded yet</p>
           )}
           {runMessage && <p className="mt-1 font-medium text-brand-text">{runMessage}</p>}
+          {runError && (
+            <p role="alert" className="mt-1 flex items-start gap-1.5 text-rose-500">
+              <AlertCircle className="mt-0.5 size-3 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">Run failed: {runError.message}</span>
+              <button
+                type="button"
+                onClick={() => setDetail(runError)}
+                aria-label={`Show the full error from running ${job.name}`}
+                title="Show the full error"
+                className="-my-1 shrink-0 rounded p-1 text-rose-500 transition-colors hover:bg-rose-500/10 max-sm:min-h-[44px] max-sm:min-w-[44px]"
+              >
+                <Info className="mx-auto size-3.5" />
+              </button>
+            </p>
+          )}
         </div>
       </div>
 
@@ -202,11 +234,12 @@ export function JobCard({
         <button
           type="button"
           onClick={handleRunNow}
-          disabled={running}
+          disabled={running || scanRunning}
+          title={scanRunning && !running ? "Another scan is running. Run now works again when it finishes." : undefined}
           className="inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-brand/30 px-2.5 py-2 text-xs font-medium text-brand-text transition-colors hover:bg-brand-soft disabled:opacity-50 max-sm:min-h-[44px]"
         >
-          {running ? <Loader2 className="size-3.5 animate-spin" /> : <Zap className="size-3.5" />}
-          {running ? "Scanning…" : "Run now"}
+          {running || scanRunning ? <Loader2 className="size-3.5 animate-spin" /> : <Zap className="size-3.5" />}
+          {running ? "Scanning…" : scanRunning ? "Scan running…" : "Run now"}
         </button>
 
         <button
@@ -221,6 +254,7 @@ export function JobCard({
           {isActive ? "Pause" : "Resume"}
         </button>
       </div>
+      {detail && <ErrorDetailModal isOpen onClose={() => setDetail(null)} title={job.name} at={detail.at} message={detail.message} />}
     </div>
   );
 }
