@@ -118,6 +118,20 @@ export function pdfFingerprint(file) {
 }
 
 /**
+ * The page budget for a web-triggered CV render, from CAREER_OPS_CV_MAX_PAGES.
+ * Returns the generate-pdf flag, or no flag when the variable is unset or not a
+ * whole number from 1 to 10, so the profile's cv.max_pages (default 2) applies.
+ * @param {Record<string, string | undefined>} [env]
+ * @returns {string[]}
+ */
+export function maxPagesArgs(env = process.env) {
+  const raw = (env.CAREER_OPS_CV_MAX_PAGES ?? "").trim();
+  if (!/^\d{1,2}$/.test(raw)) return [];
+  const n = Number(raw);
+  return n >= 1 && n <= 10 ? [`--max-pages=${n}`] : [];
+}
+
+/**
  * Spawn generate-pdf.mjs as a plain child process and resolve once it exits.
  *
  * `ok` is the exit code. `delivered` is whether this render left a PDF at
@@ -145,7 +159,7 @@ export function spawnGeneratePdf({ spawnFn, execPath, coreRoot, html, finalPdf, 
       // from the template's fixed markup order, so this guard would otherwise
       // hard-fail every web-triggered render — same bypass a human already
       // applies manually via the CLI when this diverges.
-      [path.join(coreRoot, "generate-pdf.mjs"), html, finalPdf, `--format=${format}`, `--report=${reportNum}`, "--allow-reorder"],
+      [path.join(coreRoot, "generate-pdf.mjs"), html, finalPdf, `--format=${format}`, `--report=${reportNum}`, "--allow-reorder", ...maxPagesArgs(env)],
       // windowsHide: see api/doctor/route.ts — a stale inherited console
       // kills every child with 0xC0000142 on Windows; never inherit one.
       {
@@ -186,7 +200,7 @@ export function spawnAtsPdf({ spawnFn, execPath, coreRoot, html, finalPdf, forma
   return new Promise((resolve) => {
     const child = spawnFn(
       execPath,
-      [path.join(coreRoot, "generate-pdf.mjs"), html, finalPdf, `--format=${format}`, "--allow-reorder"],
+      [path.join(coreRoot, "generate-pdf.mjs"), html, finalPdf, `--format=${format}`, "--allow-reorder", ...maxPagesArgs(env)],
       {
         cwd: coreRoot,
         windowsHide: true,
