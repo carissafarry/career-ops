@@ -6,7 +6,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isSearchOnlyWrite, nextSearchWrite, noteNavigation, queryWithLiveSearch, rememberNavigation, shouldCancelSearchDebounce } from "../../src/lib/list-search-sync.mjs";
+import { isClientOnlyWrite, isSearchOnlyWrite, nextSearchWrite, noteNavigation, queryWithLiveSearch, rememberNavigation, shouldCancelSearchDebounce } from "../../src/lib/list-search-sync.mjs";
 
 function decide(state) {
   return nextSearchWrite({ expected: [], cancelled: [], ...state });
@@ -100,4 +100,23 @@ test("tab changes keep the search the reader has typed", () => {
   assert.equal(queryWithLiveSearch("tab=ALL", { tab: "SKIP" }, "Quill"), "tab=SKIP&q=Quill");
   assert.equal(queryWithLiveSearch("tab=ALL&q=Quill", { sort: "company" }, ""), "tab=ALL&sort=company");
   assert.equal(queryWithLiveSearch("tab=ALL&q=Quill", { q: "Other" }, "Quill"), "tab=ALL&q=Other");
+});
+
+// A filter, a sort or a tracker tab works on rows the page already holds, so it
+// must not ask the server for the page again. The Inbox does, until the client
+// has its own copy of the postings.
+test("filters, sorts and tracker tabs change the URL in place", () => {
+  assert.equal(isClientOnlyWrite({ min: "4" }), true);
+  assert.equal(isClientOnlyWrite({ since: "2026-11-01", until: null }), true);
+  assert.equal(isClientOnlyWrite({ sort: "date", dir: -1 }), true);
+  assert.equal(isClientOnlyWrite({ tab: "ALL" }), true);
+  assert.equal(isClientOnlyWrite({ tab: "evaluated", min: "4" }), true);
+  assert.equal(isClientOnlyWrite({}), false);
+});
+
+test("the Inbox tab is a local change only once its postings are on the client", () => {
+  assert.equal(isClientOnlyWrite({ tab: null }), false);
+  assert.equal(isClientOnlyWrite({ tab: "INBOX" }, { inboxReady: false }), false);
+  assert.equal(isClientOnlyWrite({ tab: null }, { inboxReady: true }), true);
+  assert.equal(isClientOnlyWrite({ tab: "INBOX" }, { inboxReady: true }), true);
 });

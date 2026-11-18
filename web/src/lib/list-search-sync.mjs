@@ -16,6 +16,23 @@ export function isSearchOnlyWrite(updates) {
 }
 
 /**
+ * A write that the page can apply from data it already holds: a filter, a sort,
+ * or a tab. The tracker rows and their PDF links come with every page, so any
+ * tracker tab is a local change. The Inbox needs its postings, which the client
+ * keeps a copy of once it has fetched them (`inboxReady`).
+ *
+ * @param {Record<string, unknown>} updates
+ * @param {{ inboxReady?: boolean }} [ctx]
+ */
+export function isClientOnlyWrite(updates, ctx = {}) {
+  const keys = Object.keys(updates);
+  if (keys.length === 0) return false;
+  if (!keys.includes("tab")) return true;
+  const next = String(updates.tab ?? "INBOX").toUpperCase();
+  return next === "INBOX" ? Boolean(ctx.inboxReady) : true;
+}
+
+/**
  * A tab, sort, or filter change already carries the typed search. A search
  * write that is still waiting would build its URL from the old query and
  * could drop that change. A click that does not change the URL must leave

@@ -26,21 +26,21 @@ test("wide pages grow to 1800px and reading pages stay on the 1152px cap", () =>
   ]) {
     assert.match(read(rel), /pageFrameWidthClass\.wide/, rel);
   }
-  assert.match(read("components/report-view.tsx"), /<PageFrame className="max-w-3xl/);
-  assert.doesNotMatch(read("components/report-view.tsx"), /width="wide"/);
+  assert.match(read("components/report-view.tsx"), /<PageFrame width="wide"/);
   assert.match(read("app/cv/loading.tsx"), /max-w-6xl/);
   assert.match(read("app/login/loading.tsx"), /max-w-5xl/);
   assert.match(read("app/pipeline/[id]/loading.tsx"), /max-w-6xl/);
 });
 
-test("pipeline company and role use the wide row and the date cell stays put", () => {
-  assert.match(pipeline, /min-\[1440px\]:table-fixed/);
-  assert.match(pipeline, /min-w-\[44rem\]/);
+test("pipeline columns keep their dragged or default widths and the date cell stays put", () => {
+  // Widths come from a <col> per column, so the table is fixed-layout at every size.
+  assert.match(pipeline, /const DEFAULT_COL_W/);
+  assert.match(pipeline, /<colgroup>/);
+  assert.match(pipeline, /data-col-sized=""/);
   assert.match(pipeline, /max-w-64 truncate min-\[1440px\]:min-w-0 min-\[1440px\]:flex-1 min-\[1440px\]:max-w-none" title=\{company\.label\}/);
   assert.match(pipeline, /max-w-72 truncate min-\[1440px\]:min-w-\[8rem\] min-\[1440px\]:flex-1 min-\[1440px\]:max-w-none" title=\{r\.role\}/);
   assert.match(pipeline, /max-\[1439px\]:shrink-0 items-center gap-1 text-xs text-brand-text hover:underline min-\[1440px\]:max-w-\[40%\] min-\[1440px\]:min-w-0 min-\[1440px\]:overflow-hidden/);
   assert.match(pipeline, /min-\[1440px\]:min-w-0 min-\[1440px\]:truncate/);
-  assert.match(pipeline, /\[&_th:nth-child\(6\)\]:w-\[14rem\]/);
   assert.match(pipeline, /\[data-status-confirm\]/);
   assert.match(read("components/status-select.tsx"), /flex min-w-0 max-w-full flex-nowrap items-center gap-2/);
   assert.match(read("components/status-select.tsx"), /min-w-0 truncate/);

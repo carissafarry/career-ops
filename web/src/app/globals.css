@@ -433,3 +433,13 @@ html.dark .co-cost[data-tone="free"]{color:hsl(158 64% 60%);background:hsl(158 6
 html.dark .co-cost[data-tone="spend"]{color:#bdb5da;background:rgb(185 156 247 / .1);border-color:rgb(185 156 247 / .22)}
 }
 .co-cost svg{width:.85em;height:.85em}
+
+/* Pipeline table once the user has dragged a column: widths come from <col>, and
+   cells cut their text at the column edge instead of at their built-in max width. */
+table[data-col-sized] { table-layout: fixed; }
+table[data-col-sized] td:nth-child(3),
+table[data-col-sized] td:nth-child(4) { overflow: hidden; text-overflow: ellipsis; }
+table[data-col-sized] td .truncate { max-width: none; min-width: 0; flex: 1 1 auto; }
+table[data-col-sized] td a.flex { width: 100%; }
+/* The resume column is the one that takes up the spare width, so a dragged column keeps the width it was dragged to. */
+table[data-col-sized] th:nth-child(8) { width: auto; }

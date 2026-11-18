@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import type { Application, InboxJob } from "@/lib/career-ops";
 import { sharedGet } from "@/lib/shared-fetch";
 
@@ -28,7 +28,9 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchedAt = useRef(0);
   const refetch = useCallback(() => {
+    fetchedAt.current = Date.now();
     setLoading(true);
     sharedGet("/api/pipeline")
       .then((r) => r.json())
@@ -45,7 +47,10 @@ export function PipelineProvider({ children }: { children: React.ReactNode }) {
   }, [refetch]);
 
   useEffect(() => {
-    const onFocus = () => refetch();
+    // Focusing the window is frequent and the request is a full read of the pipeline: at most once a minute.
+    const onFocus = () => {
+      if (Date.now() - fetchedAt.current > 60_000) refetch();
+    };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [refetch]);

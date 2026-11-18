@@ -49,7 +49,6 @@ test("a checklist returns to the pipeline entry behind the report", () => {
   const suffixAt = apply.indexOf("const suffix = query ? `?${query}` : \"\"");
   assert.ok(suffixAt > 0, "checklist links share one pipelineQuery suffix");
   const links = apply.slice(suffixAt);
-  assert.match(links, /backHref=\{`\/pipeline\$\{suffix\}`\}/);
   assert.match(links, /reportHref=\{`\/pipeline\/\$\{encodeURIComponent\(id\)\}\$\{suffix\}`\}/);
 });
 

@@ -1,13 +1,10 @@
 import { Suspense } from "react";
-import { pdfReadyReportNumbers, pipelineSummary, readTrackerShape, withCloseDates, type InboxJob } from "@/lib/career-ops";
+import { pdfReadyReportNumbers, pipelineSummary, readTrackerShape, withCloseDates } from "@/lib/career-ops";
 import { reportNumberFromCell } from "@/lib/apply/cv-selection.mjs";
 import { pendingInbox } from "@/lib/inbox-pending.mjs";
 import { PipelineView } from "@/components/pipeline-view";
 import { pipelineTab } from "@/lib/pipeline-navigation.mjs";
-import { scorePosting } from "@/lib/core/inbox-rank.mjs";
-import { applyInboxFit, loadFitTargets } from "@/lib/inbox-fit-profile.mjs";
-import { readScanRuns, scanSelectorData } from "@/lib/scan-runs";
-import { locationKeys } from "@/lib/location-geo.mjs";
+import { loadInboxPayload } from "@/lib/inbox-payload";
 
 export const dynamic = "force-dynamic"; // always read fresh local files
 
@@ -20,48 +17,34 @@ export default async function PipelinePage({ searchParams }: { searchParams: Pro
   const applications = await withCloseDates(summary.applications);
   const { inbox } = summary;
   const pending = pendingInbox(inbox);
-  const fitted = onInbox ? withInboxFit(pending.map((job) => ({ ...job, locationKeys: locationKeys(job.location ?? "") }))) : null;
-  const scans = onInbox ? scanSelectorData(readScanRuns(), pending.map((job) => job.url)) : null;
+  const inboxPayload = onInbox ? loadInboxPayload(inbox) : null;
   const trackerShape = readTrackerShape();
   // Tracker row numbers whose tailored CV is indexed (data/pdf-index.tsv) AND on
   // disk; the tracker's own PDF emoji can drift from what output/ really holds.
   // Rows are keyed the way /api/cv-pdf?application= resolves them: through the
   // report cell, so a row with no resolvable report never gets a dead link.
-  // Skipped on the inbox tab, which has no table.
+  // Computed on every tab, the inbox too: the client switches between tabs
+  // without asking the server again, so the rows have to carry their PDF links.
   // One manifest read for the whole table, not one per row (#6974: per-row
   // lookups took 8 s on a 5,000-row tracker).
   const cvRows: string[] = [];
-  if (!onInbox) {
-    const rowReports = applications.flatMap((a) => {
-      const report = reportNumberFromCell(a.report);
-      return report !== null && report > 0 ? [{ n: a.n, report }] : [];
-    });
-    const ready = await pdfReadyReportNumbers(new Set(rowReports.map((r) => r.report)));
-    for (const r of rowReports) if (ready.has(r.report)) cvRows.push(r.n);
-  }
+  const rowReports = applications.flatMap((a) => {
+    const report = reportNumberFromCell(a.report);
+    return report !== null && report > 0 ? [{ n: a.n, report }] : [];
+  });
+  const ready = await pdfReadyReportNumbers(new Set(rowReports.map((r) => r.report)));
+  for (const r of rowReports) if (ready.has(r.report)) cvRows.push(r.n);
   return (
     <Suspense>
       <PipelineView
         applications={applications}
-        inbox={fitted ? fitted.jobs : null}
+        inbox={inboxPayload ? inboxPayload.jobs : null}
         inboxCount={pending.length}
-        inboxFitError={fitted?.error ?? null}
-        scans={scans}
+        inboxFitError={inboxPayload?.error ?? null}
+        scans={inboxPayload ? inboxPayload.scans : null}
         trackerShape={trackerShape}
         cvRows={cvRows}
       />
     </Suspense>
   );
-}
-
-function withInboxFit(jobs: InboxJob[]): { jobs: InboxJob[]; error: string | null } {
-  return applyInboxFit(jobs, loadFitTargets, (job, targets) => ({
-    ...job,
-    fit: scorePosting({
-      title: job.role,
-      location: job.location ?? "",
-      pay: job.compensation ?? "",
-      rankStamp: job.rankStamp ?? null,
-    }, targets),
-  }));
 }

@@ -27,7 +27,7 @@ test("the row filter reads the deferred search value, not the keystroke value", 
   assert.match(predicate, /query\.toLowerCase\(\)/);
   assert.doesNotMatch(predicate, /deferredQ\.toLowerCase\(\)/, "surrounding spaces in the raw value are not part of the match");
   assert.doesNotMatch(predicate, /\bq\.trim\(\)|\bq\.toLowerCase\(\)/, "the filter still reads q directly");
-  assert.match(predicate, /\[minFilter, query\]/);
+  assert.match(predicate, /\[minFilter, dateFrom, dateTo, query\]/);
   assert.doesNotMatch(predicate, /\[minFilter, query, deferredQ\]/);
   assert.match(src, /tabRows\.filter\(matchesFilters\)/);
 });

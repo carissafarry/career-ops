@@ -19,7 +19,7 @@ import { startRouteProgress } from "@/components/route-progress";
 import { sortRows } from "@/lib/core/pipeline-sort.mjs";
 import { PageFrame } from "@/components/page-frame";
 import { PIPELINE_TABS, pipelineQuery, pipelineTab, rowOnPipelineTab, tabStripScrollLeft, trackerDetailHref } from "@/lib/pipeline-navigation.mjs";
-import { isSearchOnlyWrite, queryWithLiveSearch } from "@/lib/list-search-sync.mjs";
+import { isClientOnlyWrite, isSearchOnlyWrite, queryWithLiveSearch } from "@/lib/list-search-sync.mjs";
 import { useListSearch } from "@/lib/use-list-search";
 import { COMPARE_MAX } from "@/lib/pipeline-compare.mjs";
 import { postingHref, postingLabel } from "@/lib/posting-url.mjs";
@@ -39,6 +39,11 @@ type Tab = (typeof PIPELINE_TABS)[number];
 type SavedView = NonNullable<ReturnType<typeof normalizeView>>;
 
 const SORT_KEYS = ["tracker", "company", "role", "score", "status", "date"] as const;
+const COL_WIDTHS_KEY = "co-pipeline-col-widths";
+// Starting widths in px. The resume column takes whatever space is left.
+const DEFAULT_COL_W: Record<string, number> = { tracker: 92, company: 264, role: 536, score: 86, status: 168, date: 150 };
+const COL_MIN = 56;
+const COL_MAX = 900;
 const VIEWS_KEY = "career-ops:pipeline-views";
 const REMOVAL_WARNING = "This removal is not saved yet. Reloading brings the view back.";
 type SortKey = (typeof SORT_KEYS)[number];
@@ -103,6 +108,11 @@ export function PipelineView({
   const visibleTab = isPending && pendingTab ? pendingTab : tab;
   const pMin = parseFloat(params.get("min") ?? "");
   const minFilter: number | null = Number.isFinite(pMin) ? pMin : null;
+  // Applied-on range (?since=&until=), inclusive, as YYYY-MM-DD. Anything else in the URL is ignored.
+  const isoDay = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+  const dateFrom = isoDay(params.get("since"));
+  const dateTo = isoDay(params.get("until"));
+  const dateFiltering = dateFrom != null || dateTo != null;
   const pSort = params.get("sort") ?? "";
   const sortKey: SortKey = (SORT_KEYS as readonly string[]).includes(pSort) ? (pSort as SortKey) : "score";
   const sortDir: 1 | -1 = params.get("dir") === "1" ? 1 : -1;
@@ -112,6 +122,51 @@ export function PipelineView({
   // reload or the browser Back button still has it. Tab changes include the
   // typed value immediately, before that pause.
   const qRef = useRef(params.get("q") ?? "");
+  // The Inbox's postings, kept on the client. A tracker tab's page render leaves
+  // them out, so they are fetched in the background and the Inbox tab opens from
+  // this copy instead of waiting for a page render.
+  const [inboxCache, setInboxCache] = useState<{ jobs: InboxJob[]; error: string | null; scans: NonNullable<typeof scans> } | null>(
+    inbox && scans ? { jobs: inbox, error: inboxFitError, scans } : null,
+  );
+  const inboxCacheRef = useRef(inboxCache);
+  const inboxFetchedAt = useRef(0);
+  const refreshInboxCache = useCallback(() => {
+    inboxFetchedAt.current = Date.now();
+    fetch("/api/pipeline/inbox")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && Array.isArray(d.jobs) && d.scans) {
+          const next = { jobs: d.jobs as InboxJob[], error: (d.error ?? null) as string | null, scans: d.scans as NonNullable<typeof scans> };
+          inboxCacheRef.current = next;
+          setInboxCache(next);
+        }
+      })
+      .catch(() => {
+        /* the Inbox tab falls back to a normal page load */
+      });
+  }, []);
+  // A page render that carries the inbox is newer than the copy.
+  useEffect(() => {
+    if (inbox && scans) {
+      const next = { jobs: inbox, error: inboxFitError, scans };
+      inboxCacheRef.current = next;
+      inboxFetchedAt.current = Date.now();
+      setInboxCache(next);
+    }
+  }, [inbox, scans, inboxFitError]);
+  // Fill the copy once the page is idle, and refresh it when the window is focused again (at most once a minute).
+  useEffect(() => {
+    const idle = window.requestIdleCallback ?? ((fn: () => void) => window.setTimeout(fn, 1500));
+    if (!inboxCacheRef.current) idle(refreshInboxCache);
+    const onFocus = () => {
+      if (Date.now() - inboxFetchedAt.current > 60_000) refreshInboxCache();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [refreshInboxCache]);
+  const inboxJobs = inbox ?? inboxCache?.jobs ?? null;
+  const scanData = scans ?? inboxCache?.scans ?? null;
+  const fitError = inbox ? inboxFitError : inboxCache?.error ?? inboxFitError;
   const commitParams = useCallback(
     (updates: Record<string, string | number | null>) => {
       const qs = queryWithLiveSearch(params.toString(), updates, qRef.current);
@@ -120,6 +175,14 @@ export function PipelineView({
       // Search already filtered the rows. A transition would hide them.
       if (isSearchOnlyWrite(updates)) {
         router.replace(href, { scroll: false });
+        return true;
+      }
+      // A filter or sort only needs the rows already loaded. Changing the URL in
+      // place updates useSearchParams without asking the server for the page again.
+      if (isClientOnlyWrite(updates, { inboxReady: inboxCacheRef.current !== null })) {
+        window.history.replaceState(null, "", href);
+        // Opening the Inbox from the copy: bring it up to date behind the scenes.
+        if (Object.prototype.hasOwnProperty.call(updates, "tab") && String(updates.tab ?? "INBOX").toUpperCase() === "INBOX") refreshInboxCache();
         return true;
       }
       if (Object.prototype.hasOwnProperty.call(updates, "tab")) {
@@ -132,7 +195,7 @@ export function PipelineView({
       });
       return true;
     },
-    [params, router, pathname, startNavigation],
+    [params, router, pathname, startNavigation, refreshInboxCache],
   );
   const { q, setQ, setParams, cancelPendingSearch } = useListSearch(params, commitParams, qRef);
   // Typing stays local until the URL catches up, so include it when leaving.
@@ -330,9 +393,13 @@ export function PipelineView({
         const n = scoreNum(r.score);
         if (Number.isNaN(n) || n < minFilter) return false;
       }
+      if (dateFrom != null || dateTo != null) {
+        const day = (r.date ?? "").slice(0, 10);
+        if (!day || (dateFrom != null && day < dateFrom) || (dateTo != null && day > dateTo)) return false;
+      }
       return !query || companySearchText(r).toLowerCase().includes(query.toLowerCase());
     },
-    [minFilter, query],
+    [minFilter, dateFrom, dateTo, query],
   );
 
   const tabRows = useMemo(() => {
@@ -354,7 +421,7 @@ export function PipelineView({
     [tabRows, matchesFilters, sortKey, sortDir],
   );
 
-  const filtering = query !== "" || minFilter != null;
+  const filtering = query !== "" || minFilter != null || dateFiltering;
   const tabLabel = tab === "ALL" ? null : tab.charAt(0) + tab.slice(1).toLowerCase();
   // The empty state needs the All-tab match count. Memoize it with the same
   // inputs as the table filter so a keystroke, while the deferred query is
@@ -374,7 +441,7 @@ export function PipelineView({
     searchInput.current?.focus();
   }
 
-  const empty =
+  const baseEmpty =
     emptyState &&
     emptyStateView(emptyState, {
       tabLabel,
@@ -384,9 +451,14 @@ export function PipelineView({
       clearSearch,
       clearMin: () => setParams({ min: null }),
     });
+  // With only a date range set, "No applications yet" would be wrong: say what is filtering.
+  const empty =
+    baseEmpty && dateFiltering && !query && minFilter == null
+      ? { heading: "No applications in this date range", actions: [{ label: "Clear date filter", run: () => setParams({ since: null, until: null }) }] }
+      : baseEmpty;
   const filterStatus = isPending || !filtering ? "" : empty ? empty.heading : `${filtered.length} of ${tabRows.length} shown`;
 
-  const filterKey = `${visibleTab}|${deferredQ}|${sort.key}|${sort.dir}|${minFilter ?? ""}|${filtered.length}`;
+  const filterKey = `${visibleTab}|${deferredQ}|${sort.key}|${sort.dir}|${minFilter ?? ""}|${dateFrom ?? ""}|${dateTo ?? ""}|${filtered.length}`;
   const [windowState, setWindowState] = useState<{ key: string; span: { start: number; end: number } } | null>(null);
   // Until the next measurement after a filter change, keep the last measured
   // rows (fitted to the new count) so a row on screen keeps its editor state.
@@ -405,6 +477,60 @@ export function PipelineView({
   const offscreenFailures = offscreenStatusFailures(heldSaves, mountedRows.map((row) => applicationKey(row)));
   // The checkbox, the sortable columns and the resume column.
   const columnCount = SORT_KEYS.length + 2;
+
+  // Column widths the user dragged, in px by column key. Null keeps DEFAULT_COL_W. The checkbox and resume columns stay as they are, and resume takes
+  // up whatever width the others leave.
+  const tableRef = useRef<HTMLTableElement>(null);
+  const [colW, setColW] = useState<Record<string, number> | null>(null);
+  const colWRef = useRef<Record<string, number> | null>(null);
+  const cw = { ...DEFAULT_COL_W, ...colW };
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(COL_WIDTHS_KEY) ?? "null");
+      if (saved && typeof saved === "object" && SORT_KEYS.every((k) => Number.isFinite(saved[k]))) {
+        colWRef.current = saved;
+        setColW(saved);
+      }
+    } catch {
+      /* no saved widths: the built-in ones apply */
+    }
+  }, []);
+  const storeColW = (next: Record<string, number> | null) => {
+    colWRef.current = next;
+    setColW(next);
+    try {
+      if (next) window.localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(next));
+      else window.localStorage.removeItem(COL_WIDTHS_KEY);
+    } catch {
+      /* the widths still apply until the page closes */
+    }
+  };
+  const measureCols = (): Record<string, number> => ({ ...DEFAULT_COL_W, ...colWRef.current });
+  const clampCol = (w: number) => Math.min(COL_MAX, Math.max(COL_MIN, Math.round(w)));
+  const startResize = (event: PointerEvent<HTMLElement>, key: string) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const base = measureCols();
+    const startX = event.clientX;
+    const move = (e: globalThis.PointerEvent) => {
+      const next = { ...base, [key]: clampCol(base[key] + e.clientX - startX) };
+      colWRef.current = next;
+      setColW(next);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      storeColW(colWRef.current);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+  const nudgeCol = (key: string, delta: number) => {
+    const base = measureCols();
+    storeColW({ ...base, [key]: clampCol(base[key] + delta) });
+  };
   // Same test as the selection bar's selectedRows.length > 0.
   const hasSelection = filtered.some((r) => selected.has(applicationKey(r)));
 
@@ -726,6 +852,28 @@ export function PipelineView({
             ))}
           </select>
         </label>}
+        {visibleTab !== "INBOX" && (
+          <div className="inline-flex items-center gap-2 text-xs text-muted">
+            Date
+            <input
+              type="date"
+              aria-label="Applied from"
+              value={dateFrom ?? ""}
+              max={dateTo ?? undefined}
+              onChange={(e) => setParams({ since: e.target.value || null })}
+              className="rounded-md border border-border bg-surface px-2 py-1 text-sm text-foreground"
+            />
+            <span aria-hidden="true">to</span>
+            <input
+              type="date"
+              aria-label="Applied to"
+              value={dateTo ?? ""}
+              min={dateFrom ?? undefined}
+              onChange={(e) => setParams({ until: e.target.value || null })}
+              className="rounded-md border border-border bg-surface px-2 py-1 text-sm text-foreground"
+            />
+          </div>
+        )}
         {views.map((view) => {
           const active = view.tab === tab && view.q === q && view.min === minFilter && view.sort === sort.key && view.dir === sort.dir;
           return (
@@ -816,6 +964,21 @@ export function PipelineView({
         </div>
       )}
 
+      {visibleTab !== "INBOX" && dateFiltering && (
+        <div className="mt-3 flex items-center gap-2">
+          <span className="text-xs text-faint">Filtered:</span>
+          <button
+            type="button"
+            onClick={() => setParams({ since: null, until: null })}
+            className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand-soft px-2.5 py-1 text-xs font-medium text-brand-text transition-colors hover:bg-brand/15"
+            title="Clear date filter"
+          >
+            {dateFrom && dateTo ? `${dateFrom} to ${dateTo}` : dateFrom ? `from ${dateFrom}` : `until ${dateTo}`}
+            <X className="size-3" />
+          </button>
+        </div>
+      )}
+
       {visibleTab !== "INBOX" && (
         <p role="status" className={cn("text-xs tabular-nums text-muted", empty ? "sr-only" : filterStatus && "mt-3")}>
           {filterStatus}
@@ -901,7 +1064,7 @@ export function PipelineView({
       {visibleTab === "INBOX" ? (
         /* ── Inbox: the triage surface (Abundance → Triage → Shortlist → Score) ── */
         <>
-          {inbox === null ? (
+          {inboxJobs === null ? (
             <div role="status" className="mt-4 overflow-x-auto rounded-2xl border border-border">
               <span className="sr-only">Loading inbox…</span>
               <table aria-hidden="true" className="w-full min-w-[44rem] text-sm">
@@ -912,11 +1075,11 @@ export function PipelineView({
             </div>
           ) : (
             <>
-              {inboxFitError && (
-                <p role="alert" className="mt-2 whitespace-pre-wrap text-xs text-red-500">{inboxFitError}</p>
+              {fitError && (
+                <p role="alert" className="mt-2 whitespace-pre-wrap text-xs text-red-500">{fitError}</p>
               )}
-              <InboxTriage inbox={inbox} scans={scans} />
-              {inbox.length === 0 && <InboxEmpty tracked={visibleApplications.length} />}
+              <InboxTriage inbox={inboxJobs} scans={scanData} />
+              {inboxJobs.length === 0 && <InboxEmpty tracked={visibleApplications.length} />}
             </>
           )}
         </>
@@ -926,12 +1089,30 @@ export function PipelineView({
            but a table too wide for the viewport can now be scrolled to instead
            of being silently cut off. min-w keeps the columns readable rather
            than letting w-full crush them on a phone. */
-        <div className="mt-4 overflow-x-auto rounded-2xl border border-border">
+        <>
+        {colW && (
+          <div className="mt-4 flex justify-end">
+            <button type="button" onClick={() => storeColW(null)} className="text-xs text-muted underline-offset-2 hover:text-foreground hover:underline">
+              Reset column widths
+            </button>
+          </div>
+        )}
+        <div className={cn("overflow-x-auto rounded-2xl border border-border", colW ? "mt-2" : "mt-4")}>
           <table
+            ref={tableRef}
+            data-col-sized=""
+            style={{ minWidth: 44 + SORT_KEYS.reduce((sum, k) => sum + (k === "date" ? 0 : cw[k]), 0) + 96 }}
             aria-label="Tracked applications"
             aria-rowcount={filtered.length + 1}
-            className="w-full min-w-[44rem] text-sm min-[1440px]:table-fixed min-[1440px]:[&_th:nth-child(1)]:w-11 min-[1440px]:[&_th:nth-child(2)]:w-[4.5rem] min-[1440px]:[&_th:nth-child(3)]:w-[26%] min-[1440px]:[&_th:nth-child(4)]:w-[32%] min-[1440px]:[&_th:nth-child(5)]:w-[5.5rem] min-[1440px]:[&_th:nth-child(6)]:w-[14rem] min-[1440px]:[&_th:nth-child(7)]:w-[6.75rem] min-[1440px]:[&_th:nth-child(8)]:w-[4.75rem]"
+            className="w-full text-sm"
           >
+            <colgroup>
+              <col style={{ width: 44 }} />
+              {SORT_KEYS.map((k) => (
+                <col key={k} style={{ width: cw[k] }} className={k === "date" ? "hidden lg:table-column" : undefined} />
+              ))}
+              <col />
+            </colgroup>
             <thead className="bg-surface/60 text-left text-xs tracking-[0.01em] text-faint">
               <tr aria-rowindex={1}>
                 <th className="w-8 px-3 py-2.5">
@@ -947,7 +1128,7 @@ export function PipelineView({
                     key={k}
                     aria-sort={sort.key === k ? (sort.dir === 1 ? "ascending" : "descending") : "none"}
                     className={cn(
-                      "whitespace-nowrap px-4 py-2.5 font-medium",
+                      "relative whitespace-nowrap px-4 py-2.5 font-medium",
                       k === "date" && "hidden lg:table-cell",
                     )}
                   >
@@ -959,6 +1140,20 @@ export function PipelineView({
                       {k}
                       <ChevronsUpDown aria-hidden="true" className="size-3" />
                     </button>
+                    <span
+                      role="separator"
+                      aria-orientation="vertical"
+                      aria-label={`Resize the ${k} column`}
+                      tabIndex={0}
+                      title="Drag to resize. Double-click to reset all."
+                      onPointerDown={(e) => startResize(e, k)}
+                      onDoubleClick={() => storeColW(null)}
+                      onKeyDown={(e) => {
+                        if (e.key === "ArrowLeft") { e.preventDefault(); nudgeCol(k, -16); }
+                        if (e.key === "ArrowRight") { e.preventDefault(); nudgeCol(k, 16); }
+                      }}
+                      className="absolute -right-1 top-0 z-10 flex h-full w-3 cursor-col-resize touch-none justify-center outline-none after:h-full after:w-px after:bg-border hover:after:bg-brand focus-visible:after:bg-brand"
+                    />
                   </th>
                 ))}
                 <th className="whitespace-nowrap px-4 py-2.5 font-medium">resume</th>
@@ -1007,7 +1202,8 @@ export function PipelineView({
             )}
           </table>
         </div>
-      ) : trackerEmptyMessage({ shape: trackerShape, query, min: minFilter, tab }).kind === "filtered" ? (
+        </>
+      ) : dateFiltering || trackerEmptyMessage({ shape: trackerShape, query, min: minFilter, tab }).kind === "filtered" ? (
         <div className="mt-4 rounded-2xl border border-dashed border-border bg-surface/30 px-6 py-12 text-center">
           <h2 className="font-display text-lg">{empty?.heading}</h2>
           {empty && empty.actions.length > 0 && (
