@@ -38,3 +38,25 @@ export function lastFinishedRun(runs, jobId) {
   }
   return best;
 }
+
+/**
+ * Which scheduled scan produced each scan: scan id -> { jobId, name }. A scan no
+ * scheduled run matches (started by hand or from the command line) is not in the map.
+ *
+ * @param {{ id: string, startedAt: string }[]} scans
+ * @param {{ jobId: string, state?: string, at?: string, durationMs?: number }[]} runs  scheduled runs
+ * @param {{ id: string, name?: string }[]} jobs
+ * @returns {Map<string, { jobId: string, name: string }>}
+ */
+export function scanOwners(scans, runs, jobs) {
+  const names = new Map(jobs.map((job) => [job.id, String(job.name ?? "").trim() || "Scheduled scan"]));
+  const owners = new Map();
+  const finished = runs
+    .filter((run) => (run.state === "success" || run.state === "failed") && names.has(run.jobId))
+    .sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  for (const run of finished) {
+    const scanId = scanForRun(scans, run);
+    if (scanId && !owners.has(scanId)) owners.set(scanId, { jobId: run.jobId, name: names.get(run.jobId) });
+  }
+  return owners;
+}
