@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LinkedInIcon } from "@/components/icons/linkedin-icon";
-import { Bell, CircleCheck, ExternalLink, Info, ListPlus, Loader2, OctagonAlert, Trash2, TriangleAlert } from "lucide-react";
+import { Bell, ChevronDown, CircleCheck, ExternalLink, Info, ListPlus, Loader2, OctagonAlert, Trash2, TriangleAlert } from "lucide-react";
 import { pageFrameWidthClass } from "@/components/page-frame";
+import { RegionTemplates } from "@/components/country-templates";
+import { byPostedNewest, postedAgeNow } from "@/lib/linkedin-watch/posted-age.mjs";
 
 type Posting = {
   id: string; title: string; company: string; location: string; link: string;
@@ -14,7 +16,8 @@ type Status = {
   lastPollAt: string | null; nextPollAt: string | null; newToday: number; runNowRequestedAt?: string | null; lastCardCount?: number; lastKeptCount?: number; lastNewCount?: number | null; lastPages?: number; lastRead?: { requested: number; version: string | null; stop: string | null; pager: string[] } | null; lastBaseline?: boolean; filterError?: string | null;
 };
 type LastPoll = { startedAt: string; read: number; kept: number; added: number; baseline: boolean };
-type Overview = { config: Record<string, unknown>; status: Status; postings: Posting[]; baselineAt: string | null; knownCount: number; lastPoll: LastPoll | null };
+type Overview = { config: Record<string, unknown>; status: Status; postings: Posting[]; baselineAt: string | null; knownCount: number; lastPoll: LastPoll | null; searches?: SavedSearch[] };
+type SavedSearch = { id: string; name: string; url: string; active: boolean; count: number };
 
 const HALT_TEXT: Record<string, string> = {
   "login-wall": "LinkedIn asked you to log in again.",
@@ -59,6 +62,7 @@ function textToFilters(text: FilterText): Record<FilterKey, string[]> {
 }
 
 const FILTERS_OPEN_KEY = "career-ops:linkedin-filters-open";
+const SEARCHES_OPEN_KEY = "career-ops:linkedin-searches-open";
 
 type Notice = { tone: "info" | "warn" | "error"; title: string; body: string };
 
@@ -67,6 +71,18 @@ const NOTICE_STYLE = {
   warn: { box: "border-amber-500/50 bg-amber-500/10", icon: "text-amber-800 dark:text-amber-300", Icon: TriangleAlert },
   error: { box: "border-red-500/50 bg-red-500/10", icon: "text-red-700 dark:text-red-300", Icon: OctagonAlert },
 } as const;
+
+// The "this folds" hint for a <details> summary: Show/Hide and an arrow that turns when it is open.
+// The parent <details> needs the `group` class.
+function FoldHint() {
+  return (
+    <span className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs text-muted group-hover:text-foreground">
+      <span className="group-open:hidden">Show</span>
+      <span className="hidden group-open:inline">Hide</span>
+      <ChevronDown className="size-3.5 transition-transform group-open:rotate-180" aria-hidden="true" />
+    </span>
+  );
+}
 
 // One number with its label, so the poll result reads as a row of facts instead of a sentence.
 function Stat({ label, value, hint, accent = false }: { label: string; value: string | number; hint?: string; accent?: boolean }) {
@@ -111,13 +127,19 @@ export function LinkedInWatchView() {
   const [pagesPerPoll, setPagesPerPoll] = useState("1");
   const [deepPages, setDeepPages] = useState("5");
   const [filters, setFilters] = useState<FilterText>(emptyFilterText());
+  // "Ignore jobs older than": a number and a unit; the app stores it as hours.
+  const [maxAge, setMaxAge] = useState("");
+  const [maxAgeUnit, setMaxAgeUnit] = useState<"hours" | "days">("hours");
   const [scheduled, setScheduled] = useState<ScheduledJob[]>([]);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [searchName, setSearchName] = useState("");
+  const [editing, setEditing] = useState<{ id: string; url: string } | null>(null);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
   // Open/closed is a per-browser preference, remembered across refreshes (closed until you open it).
   // The browser owns the element's open state: React must not control `open`, or a re-render can
   // overwrite a click before its toggle event is handled.
   const filtersRef = useRef<HTMLDetailsElement>(null);
+  const searchesRef = useRef<HTMLDetailsElement>(null); // Saved URLs: open until you close it, then remembered
 
   const load = useCallback(async () => {
     try {
@@ -132,6 +154,14 @@ export function LinkedInWatchView() {
         setPagesPerPoll(String(next.config.pages_per_poll ?? 1));
         setDeepPages(String(next.config.deep_pages ?? 5));
         setFilters(filtersToText(next.config.filters as Partial<Record<FilterKey, string[]>> | undefined));
+        const hours = Number(next.config.max_age_hours);
+        if (Number.isInteger(hours) && hours > 0) {
+          const inDays = hours >= 24 && hours % 24 === 0;
+          setMaxAge(String(inDays ? hours / 24 : hours));
+          setMaxAgeUnit(inDays ? "days" : "hours");
+        } else {
+          setMaxAge("");
+        }
       }
     } catch {
       setError("Could not reach the app.");
@@ -148,8 +178,10 @@ export function LinkedInWatchView() {
   useEffect(() => {
     try {
       if (window.localStorage.getItem(FILTERS_OPEN_KEY) === "1" && filtersRef.current) filtersRef.current.open = true;
+      if (searchesRef.current) searchesRef.current.open = window.localStorage.getItem(SEARCHES_OPEN_KEY) !== "0";
     } catch {
       // storage blocked: the section simply starts closed
+      if (searchesRef.current) searchesRef.current.open = true;
     }
   }, []);
 
@@ -189,14 +221,42 @@ export function LinkedInWatchView() {
 
   async function save(nextFilters: FilterText = filters) {
     const ok = await post("/api/linkedin-watch", {
-      action: "save-config", search_url: url.trim(), interval_minutes: Number(interval), active_hours: hours.trim(), pages_per_poll: Number(pagesPerPoll), deep_pages: Number(deepPages), filters: textToFilters(nextFilters),
+      action: "save-config", search_url: url.trim(), interval_minutes: Number(interval), active_hours: hours.trim(), pages_per_poll: Number(pagesPerPoll), deep_pages: Number(deepPages), max_age_hours: maxAge.trim() === "" ? "" : Number(maxAge) * (maxAgeUnit === "days" ? 24 : 1), filters: textToFilters(nextFilters),
     });
     if (ok) { setDirty(false); setSavedAt(Date.now()); }
     return ok;
   }
 
+  // Saved URLs: the URL is kept under a name; each search keeps its own list, so switching loses nothing.
+  async function saveSearchName() {
+    if (await post("/api/linkedin-watch", { action: "save-search", name: searchName })) setSearchName("");
+  }
+  async function useSearch(id: string) {
+    if (dirty && !window.confirm("You have unsaved changes on this page. Switch searches anyway? The changes are lost.")) return;
+    setDirty(false);
+    await post("/api/linkedin-watch", { action: "use-search", id });
+  }
+  // Changes the URL of a saved URLs in place: same name, same list of jobs.
+  async function saveEditedUrl() {
+    if (!editing) return;
+    if (await post("/api/linkedin-watch", { action: "update-search", id: editing.id, url: editing.url.trim() })) setEditing(null);
+  }
+  async function deleteSearch(found: SavedSearch) {
+    if (!window.confirm(`Remove "${found.name}" from your saved URLs? Its list of jobs is kept and returns if you use the same URL again.`)) return;
+    await post("/api/linkedin-watch", { action: "delete-search", id: found.id });
+  }
+
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const postings = data?.postings ?? [];
+  // Newest first by the time LinkedIn shows ("14 hours ago", read against when the watcher saw it), or by when the watcher first saw it.
+  const [sortBy, setSortBy] = useState<"posted" | "seen">("posted");
+  // The age on each row is counted from LinkedIn's age at the time it was read, so it keeps moving while the page stays open.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(t);
+  }, []);
+  const rawPostings = data?.postings ?? [];
+  const postings = sortBy === "posted" ? [...rawPostings].sort(byPostedNewest) : rawPostings;
   const allSelected = postings.length > 0 && postings.every((p) => selected.has(p.id));
   const toggleOne = (id: string) => setSelected((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(postings.map((p) => p.id)));
@@ -271,7 +331,7 @@ export function LinkedInWatchView() {
   }
 
   return (
-    <div className={`mx-auto space-y-8 px-5 py-8 md:px-8 ${pageFrameWidthClass.wide}`}>
+    <div className={`mx-auto space-y-8 px-5 pb-28 pt-8 md:px-8 ${pageFrameWidthClass.wide}`}>
       <div className="border-b border-border pb-5">
         <div className="flex items-center gap-2.5">
           <LinkedInIcon className="size-6 text-brand-text" />
@@ -360,6 +420,72 @@ export function LinkedInWatchView() {
           </button>
         </div>
 
+        {(() => {
+          const searches = data?.searches ?? [];
+          const current = searches.find((x) => x.active);
+          return (
+            <details
+              ref={searchesRef}
+              className="group rounded-lg border border-border bg-background p-3"
+              onToggle={(e) => {
+                try {
+                  window.localStorage.setItem(SEARCHES_OPEN_KEY, e.currentTarget.open ? "1" : "0");
+                } catch {
+                  // storage blocked: the choice just does not persist
+                }
+              }}
+            >
+              <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-medium text-foreground">Saved URLs{searches.length > 0 ? ` (${searches.length})` : ""}</span>
+                {current
+                  ? <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-2.5 py-1 text-xs font-medium text-brand-text"><CircleCheck className="size-3.5" aria-hidden="true" /> In use: {current.name}</span>
+                  : <span className="rounded-full border border-border px-2.5 py-1 text-xs text-muted">In use: this URL has no saved name yet</span>}
+                <FoldHint />
+              </summary>
+              <p className="mt-1 text-xs text-faint">Save the URL above under a name, then paste another one to try. Each search keeps its own list of jobs, so you can come back to this one.</p>
+              <div className="mt-2 flex flex-wrap items-end gap-2">
+                <label className="text-xs text-muted">{current ? "Rename the one in use" : "Name for this URL"}
+                  <input value={searchName} onChange={(e) => setSearchName(e.target.value)} placeholder={current ? current.name : "Backend, 24h"} maxLength={60} className="mt-1 block w-52 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground" />
+                </label>
+                {searchName.trim() !== "" && searchName.trim() !== current?.name && (
+                  <button disabled={busy || dirty} onClick={saveSearchName} title={dirty ? "Press Save first, so the name goes with the URL you see" : undefined} className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-white disabled:opacity-50">
+                    {current ? "Rename" : "Save this URL"}
+                  </button>
+                )}
+              </div>
+              {searches.length > 0 && (
+                <ul className="mt-3 space-y-1.5">
+                  {searches.map((x) => (
+                    <li key={x.id} className={`flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 ${x.active ? "border-brand/40 bg-brand-soft/50" : "border-border bg-surface"}`}>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-foreground">{x.name}{x.active && <span className="ml-2 rounded-full bg-brand px-2 py-0.5 text-[11px] font-medium text-white">In use</span>}</p>
+                        <p className="text-xs text-muted">{x.count} {x.count === 1 ? "job" : "jobs"} in its list</p>
+                        {editing?.id === x.id ? (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <input value={editing.url} onChange={(e) => setEditing({ id: x.id, url: e.target.value })} aria-label={`URL of ${x.name}`} className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground md:min-w-[24rem]" />
+                            <button disabled={busy || !editing.url.trim()} onClick={saveEditedUrl} className="rounded-full bg-brand px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">Save URL</button>
+                            <button disabled={busy} onClick={() => setEditing(null)} className="rounded-full border border-border px-3 py-1.5 text-sm text-foreground disabled:opacity-50">Cancel</button>
+                          </div>
+                        ) : (
+                          <p className="mt-0.5 truncate text-xs text-faint" title={x.url}>{x.url}</p>
+                        )}
+                      </div>
+                      {editing?.id !== x.id && (
+                        <>
+                          {!x.active && <button disabled={busy} onClick={() => useSearch(x.id)} className="rounded-full bg-brand px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">Use</button>}
+                          <button disabled={busy} onClick={() => setEditing({ id: x.id, url: x.url })} className="rounded-full border border-border px-3 py-1.5 text-sm text-foreground disabled:opacity-50">Edit URL</button>
+                          <button disabled={busy} onClick={() => deleteSearch(x)} className="rounded-full border border-border px-3 py-1.5 text-sm text-foreground disabled:opacity-50">Remove</button>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {dirty && <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">The URL has changes that are not saved yet. Press Save first.</p>}
+            </details>
+          );
+        })()}
+
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-xs text-muted">Pages per scheduled poll (1-5)
             <input value={pagesPerPoll} inputMode="numeric" onChange={(e) => { setPagesPerPoll(e.target.value); setDirty(true); }} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground" />
@@ -373,7 +499,7 @@ export function LinkedInWatchView() {
 
         <details
           ref={filtersRef}
-          className="rounded-lg border border-border bg-background p-3"
+          className="group rounded-lg border border-border bg-background p-3"
           onToggle={(e) => {
             const open = e.currentTarget.open;
             try {
@@ -383,8 +509,9 @@ export function LinkedInWatchView() {
             }
           }}
         >
-          <summary className="cursor-pointer text-sm font-medium text-foreground">
-            Filters{Object.values(filters).some(Boolean) ? " (on)" : " (off)"}
+          <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
+            Filters{Object.values(filters).some(Boolean) || maxAge.trim() !== "" ? " (on)" : " (off)"}
+            <FoldHint />
           </summary>
           <p className="mt-2 text-xs text-muted">
             Same rules as a scheduled scan, applied to each job&apos;s title and location. The watcher cannot read the job text, so filters on
@@ -405,6 +532,39 @@ export function LinkedInWatchView() {
               </select>
             </label>
           )}
+          <div className="mt-3">
+            <span className="text-xs text-muted">Ignore jobs older than <span className="text-faint">· LinkedIn&apos;s date filter in the URL is not always strict, so the age LinkedIn shows is checked again here. Empty = no limit.</span></span>
+            <div className="mt-1 flex items-center gap-2">
+              <input
+                value={maxAge}
+                inputMode="numeric"
+                aria-label="Ignore jobs older than"
+                placeholder="e.g. 24"
+                onChange={(e) => { setMaxAge(e.target.value.replace(/\D/g, "")); setDirty(true); }}
+                className="w-24 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground"
+              />
+              <select
+                value={maxAgeUnit}
+                aria-label="Unit"
+                onChange={(e) => { setMaxAgeUnit(e.target.value as "hours" | "days"); setDirty(true); }}
+                className="rounded-lg border border-border bg-surface px-2 py-2 text-sm text-foreground"
+              >
+                <option value="hours">hours</option>
+                <option value="days">days</option>
+              </select>
+              <span className="text-xs text-faint">Older jobs are not listed and do not notify. They still count as seen, so they never come back as new. Jobs already in your list are not removed.</span>
+            </div>
+          </div>
+          <div className="mt-3">
+            <span className="text-xs text-muted">Region <span className="text-faint">· fills &quot;Location must match one of&quot; with every country in it</span></span>
+            <div className="mt-1">
+              <RegionTemplates
+                include={filters.allow.split("\n").map((l) => l.trim()).filter(Boolean)}
+                exclude={filters.block.split("\n").map((l) => l.trim()).filter(Boolean)}
+                onChange={(next) => { setFilters({ ...filters, allow: next.include.join("\n"), block: next.exclude.join("\n") }); setDirty(true); }}
+              />
+            </div>
+          </div>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             {FILTER_FIELDS.map(({ key, label, hint }) => (
               <label key={key} className="text-xs text-muted">{label} <span className="text-faint">· {hint}</span>
@@ -443,6 +603,13 @@ export function LinkedInWatchView() {
               <input type="checkbox" checked={allSelected} onChange={toggleAll} className="size-4 accent-[var(--color-brand)]" />
               {selected.size > 0 ? `${selected.size} selected` : "Select all"}
             </label>
+            <label className="inline-flex items-center gap-2 pr-2 text-sm text-muted">
+              Sort
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value as "posted" | "seen")} className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm text-foreground">
+                <option value="posted">Newest posted on LinkedIn</option>
+                <option value="seen">Newest seen by the watcher</option>
+              </select>
+            </label>
             <button disabled={busy || selected.size === 0} onClick={() => act("pipeline", [...selected])} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-sm text-foreground disabled:opacity-50"><ListPlus className="size-3.5" /> Add to pipeline</button>
             <button disabled={busy || selected.size === 0} onClick={() => act("applied", [...selected])} className="inline-flex items-center gap-1 rounded-full bg-brand px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"><CircleCheck className="size-3.5" /> Mark applied</button>
             <button disabled={busy || selected.size === 0} onClick={() => act("delete", [...selected])} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-sm text-foreground disabled:opacity-50"><Trash2 className="size-3.5" /> Delete</button>
@@ -460,7 +627,11 @@ export function LinkedInWatchView() {
                   {p.applied && <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-700 px-2 py-0.5 text-[11px] font-semibold text-white"><CircleCheck className="size-3" /> Applied</span>}
                   {p.addedToPipeline && !p.applied && <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-[11px] font-semibold text-muted">In pipeline</span>}
                 </p>
-                <p className="text-sm text-muted">{p.company}{p.location ? ` · ${p.location}` : ""}{p.postedText ? ` · ${p.postedText}` : ""}</p>
+                <p className="text-sm text-muted">{p.company}{p.location ? ` · ${p.location}` : ""}{(() => {
+                  const age = postedAgeNow(p, nowMs);
+                  if (!age && !p.postedText) return null;
+                  return <span title={p.postedText ? `LinkedIn showed "${p.postedText}" when the watcher read this job. The age here counts on from that.` : undefined}>{` · ${age ?? p.postedText}`}</span>;
+                })()}</p>
                 <p className="text-xs text-faint">Seen {ago(p.firstSeen)} · may be a repost if you saw it before</p>
               </div>
               <div className="flex flex-wrap items-center gap-2">

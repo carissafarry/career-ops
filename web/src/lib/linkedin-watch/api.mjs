@@ -7,10 +7,13 @@ import { handleIngest } from "./ingest.mjs";
 import { notifyMac } from "./notify.mjs";
 import { hasFilters } from "./config.mjs";
 import { normalizeRawCards } from "./page-read.mjs";
+import { postedAtMs } from "./posted-age.mjs";
+import { recordPosted } from "./posted-log.mjs";
 import { appendOrigin, appendPollLog, linkedinScanId, originLines, readLastPoll } from "./scan-log.mjs";
 import { readState, writeState, readStatus, writeStatus } from "./store.mjs";
+import { deleteSearch, findSearch, listSearches, saveSearch, switchSearch, updateSearch } from "./searches.mjs";
 
-const CONFIG_KEYS = ["search_url", "interval_minutes", "jitter_percent", "max_polls_per_day", "active_hours", "pages_per_poll", "deep_pages", "filters"];
+const CONFIG_KEYS = ["search_url", "interval_minutes", "jitter_percent", "max_polls_per_day", "active_hours", "pages_per_poll", "deep_pages", "max_age_hours", "filters"];
 
 export function readRawConfig(paths) {
   try {
@@ -40,6 +43,7 @@ export function getOverview(paths) {
     baselineAt: state.baselineAt,
     lastPoll: readLastPoll(paths.pollLogFile), // the answer to "did the last poll find anything new?", also for older status files
     knownCount: Object.keys(state.seen).length,
+    searches: listSearches(paths, readRawConfig(paths)?.search_url),
   };
 }
 
@@ -83,8 +87,22 @@ export function applyAction(paths, body, deps = {}) {
     }
     fs.mkdirSync(path.dirname(paths.configFile), { recursive: true });
     fs.writeFileSync(paths.configFile, yaml.dump(raw));
+    switchSearch(paths, before?.searchUrl, parsed.searchUrl);
     replanNextPoll(paths, before, parsed, deps);
     return { status: 200, body: { ok: true } };
+  }
+  if (action === "save-search") return saveSearch(paths, loadConfig(paths)?.searchUrl, body.name);
+  if (action === "delete-search") return deleteSearch(paths, body.id);
+  if (action === "update-search") {
+    return updateSearch(paths, body.id, body.url, {
+      activeUrl: loadConfig(paths)?.searchUrl,
+      setActiveUrl: (url) => fs.writeFileSync(paths.configFile, yaml.dump({ ...(readRawConfig(paths) ?? {}), search_url: url })),
+    });
+  }
+  if (action === "use-search") {
+    const saved = findSearch(paths, body.id);
+    if (!saved) return { status: 404, body: { error: "Saved URLs not found." } };
+    return applyAction(paths, { ...(readRawConfig(paths) ?? {}), action: "save-config", search_url: saved.url }, deps);
   }
   if (action === "enable" || action === "resume" || action === "disable") {
     if (action !== "disable" && !loadConfig(paths)) {
@@ -179,10 +197,16 @@ export async function ingest(paths, payload, origin, deps = {}) {
   return { status: 200, body: out.reply };
 }
 
-const toOffer = (p) => ({
-  url: p.link, company: p.company, title: p.title, location: p.location,
-  postedAt: "", ats: "linkedin", source: "linkedin-watch",
-});
+// The Pipeline stores a date only, so the offer carries the date of LinkedIn's estimate (empty when LinkedIn gave no age);
+// the hour is kept next to it by recordPosted and read back for these rows.
+const estimateOf = (p) => postedAtMs(p.postedText, p.firstSeen);
+const toOffer = (p) => {
+  const at = estimateOf(p);
+  return {
+    url: p.link, company: p.company, title: p.title, location: p.location,
+    postedAt: at === null ? "" : new Date(at).toISOString().slice(0, 10), ats: "linkedin", source: "linkedin-watch",
+  };
+};
 
 // Mutations re-read the state after any await: a poll may have written it in between.
 function patchPostings(paths, ids, patch) {
@@ -202,6 +226,11 @@ export async function addPostings(paths, ids, addOffers) {
   if (todo.length === 0) return { status: 200, body: { added: 0 } };
   const result = await addOffers(todo.map(toOffer));
   if (result.error) return { status: 500, body: { error: result.error } };
+  try {
+    recordPosted(paths.postedFile, todo.map((p) => ({ url: p.link, postedAt: estimateOf(p) === null ? "" : new Date(estimateOf(p)).toISOString() })));
+  } catch (e) {
+    console.error("linkedin-watch: could not record the posted time:", e.message); // the job is in the pipeline either way
+  }
   patchPostings(paths, todo.map((p) => p.id), { addedToPipeline: true, acknowledged: true });
   return { status: 200, body: { added: result.added } };
 }

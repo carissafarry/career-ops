@@ -2,6 +2,7 @@
 // tells the extension whether and when to poll again. All decisions live here.
 import { detectHalt, normalizeRawCards } from "./page-read.mjs";
 import { applyPoll, prune } from "./state.mjs";
+import { postedAtMs } from "./posted-age.mjs";
 import { nextDelayMs, pollsAllowed, withinActiveHours } from "./config.mjs";
 
 const IDLE_DELAY_MS = 15 * 60_000;
@@ -50,6 +51,16 @@ export function handleIngest({ payload, cfg, state, status, now, random, notify,
   }
 
   const cards = normalizeRawCards(payload.cards);
+  // "Ignore jobs older than N hours": counted on the age LinkedIn shows. A card with no readable age is kept.
+  if (cfg.maxAgeHours) {
+    const limitMs = cfg.maxAgeHours * 3_600_000;
+    const tooOld = (card) => {
+      const at = postedAtMs(card.postedText, nowIso);
+      return at !== null && now.getTime() - at > limitMs;
+    };
+    const userKeep = keep;
+    keep = (card) => !tooOld(card) && (userKeep ? userKeep(card) : true);
+  }
   // How many pages the app asked for on this poll: deep for the first scan and Run now, few otherwise.
   const pagesRequested = manual || !state.baselineAt ? cfg.deepPages : cfg.pagesPerPoll;
   const result = applyPoll(state, cards, nowIso, keep ?? undefined);
@@ -61,6 +72,8 @@ export function handleIngest({ payload, cfg, state, status, now, random, notify,
     ...next,
     lastPollAt: nowIso,
     lastCardCount: cards.length,
+    // Which jobs this poll actually read: a listed posting missing from it is no longer in the results.
+    lastReadIds: cards.map((c) => c.id).slice(0, 300),
     lastPages: Number.isInteger(payload.pages) && payload.pages > 0 ? payload.pages : 1,
     lastRead: {
       requested: pagesRequested,

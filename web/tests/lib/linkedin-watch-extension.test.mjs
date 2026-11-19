@@ -30,3 +30,27 @@ test("the extension has its logo at every size Chrome asks for", () => {
   }
   assert.deepEqual(manifest.action.default_icon, { 16: manifest.icons["16"], 32: manifest.icons["32"] });
 });
+
+// content.js is a plain content script (no exports), so the time pattern is read from its source.
+const postedRe = (() => {
+  const src = fs.readFileSync(path.join(dir, "content.js"), "utf8");
+  const m = /const POSTED_RE = (\/.*\/[a-z]*);/.exec(src);
+  assert.ok(m, "POSTED_RE not found in content.js");
+  return new Function(`return ${m[1]}`)();
+})();
+
+test("the posted-time pattern recognises every unit LinkedIn shows, months and years included", () => {
+  for (const text of ["4 minutes ago", "6 hours ago", "1 day ago", "3 weeks ago", "1 month ago", "2 months ago", "1 year ago", "Posted 5 hours ago", "Reposted 2 days ago", "Promoted · 1 month ago · Easy Apply", "6 jam yang lalu", "2 bulan yang lalu", "1 tahun yang lalu", "Just now"]) {
+    assert.ok(postedRe.test(text), text);
+  }
+});
+
+test("the posted-time pattern ignores lines that are not an age", () => {
+  for (const text of ["Actively reviewing applicants", "Remote", "Jakarta, Indonesia", "Easy Apply", "Be an early applicant", "65 people clicked apply"]) {
+    assert.ok(!postedRe.test(text), text);
+  }
+});
+
+test("the manifest version moves with the content script change", () => {
+  assert.equal(manifest.version, "0.5.3");
+});

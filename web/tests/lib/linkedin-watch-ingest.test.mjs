@@ -145,3 +145,8 @@ test("a poll skipped for active hours still records when the next one is planned
   const r = run({ cfg: night });
   assert.equal(r.status.nextPollAt, new Date(NOW.getTime() + 15 * 60_000).toISOString());
 });
+
+test("the poll records the ids of the cards it read, so a posting no longer in the results can be told apart", () => {
+  const r = run({ payload: { cards: [raw(4), raw(3), raw(1)], page: OK_PAGE } });
+  assert.deepEqual(r.status.lastReadIds, ["4", "3", "1"]);
+});

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "career-ops LinkedIn watcher",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvKfIJ0ZMTcxyS2y+H2U4CToIYIKSi/kt7CBeydMLUMAi4pgb0UiwlSNz7Oh+p/KEp/8nUUSLyoWrXnOm+hnYwsfEb//6E7uNG+8VGVxrvZLG0l/mBp26YN0FBIKk+LBLw3XT57XTC43zPdeNBqdEF2ghOmAZah07niEEkd6Uj1kJuXCBFOFKHbdNSbbkkqmhcJEmUMqzj4aqre+kai19md/DkpjXfpGke1GayCnfBSSVR50vghFAeultgQBwBvabYw9JCPlIPo/G2aqoBCJ9WfiC3+5lKuxbW1w8hA7JB4K68Qu8eFMET9O7GAM7woP19Jkl/aB3i6dP39KjGDV4tQIDAQAB",
   "description": "Reloads one saved LinkedIn jobs search at random intervals and sends new postings to your local career-ops app.",
   "icons": {

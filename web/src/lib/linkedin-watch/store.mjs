@@ -12,6 +12,8 @@ export function watchPaths(dataRoot) {
     configFile: path.join(dataRoot, "data", "linkedin-watch.yml"),
     originFile: path.join(dataRoot, "data", "scan-origin.tsv"),
     pollLogFile: path.join(dataRoot, "data", "linkedin-watch-polls.tsv"),
+    searchesFile: path.join(dataRoot, "data", "linkedin-watch-searches.yml"),
+    postedFile: path.join(dataRoot, "data", "linkedin-posted.tsv"),
   };
 }
 
@@ -29,6 +31,7 @@ export function emptyStatus() {
     lastNewCount: null,
     lastPages: 1,
     lastRead: null,
+    lastReadIds: [],
     lastBaseline: false,
     pollTimes: [],
   };
@@ -54,3 +57,15 @@ export const readState = (paths) => readJson(paths.stateFile, emptyState());
 export const writeState = (paths, state) => writeJsonAtomic(paths.stateFile, state);
 export const readStatus = (paths) => readJson(paths.statusFile, emptyStatus());
 export const writeStatus = (paths, status) => writeJsonAtomic(paths.statusFile, status);
+
+// Each search the watcher has seen keeps its own list and seen ids, so switching searches never loses one.
+const stashFile = (paths, key) => path.join(paths.dir, `linkedin-watch-state-${key}.json`);
+export const readStash = (paths, key) => {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(stashFile(paths, key), "utf8"));
+    return parsed && typeof parsed === "object" ? { ...emptyState(), ...parsed } : null;
+  } catch {
+    return null;
+  }
+};
+export const writeStash = (paths, key, state) => writeJsonAtomic(stashFile(paths, key), state);

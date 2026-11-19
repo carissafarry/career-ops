@@ -61,3 +61,11 @@ test("keep: filtered cards count as seen but are not listed or reported", () => 
   const again = applyPoll(next.state, [card("3"), card("2")], NOW, () => false);
   assert.equal(again.failed, false); // everything filtered out is not a failed poll
 });
+
+test("a later poll fills in the posted time a listed posting was saved without", () => {
+  const first = applyPoll(emptyState(), [{ id: "1", link: "l1", title: "A", postedText: "" }, { id: "2", link: "l2", title: "B", postedText: "3 hours ago" }], "2026-11-20T01:00:00.000Z");
+  assert.equal(first.state.postings.find((p) => p.id === "1").postedText, "");
+  const next = applyPoll(first.state, [{ id: "1", link: "l1", title: "A", postedText: "1 month ago" }, { id: "2", link: "l2", title: "B", postedText: "4 hours ago" }], "2026-11-20T02:00:00.000Z");
+  assert.equal(next.state.postings.find((p) => p.id === "1").postedText, "1 month ago");
+  assert.equal(next.state.postings.find((p) => p.id === "2").postedText, "3 hours ago", "a time already saved is not rewritten");
+});

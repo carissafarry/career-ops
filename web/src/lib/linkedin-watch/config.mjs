@@ -7,6 +7,7 @@ const MAX_PAGES_PER_POLL = 5;
 const MAX_DEEP_PAGES = 10;
 export const FILTER_KEYS = ["positive", "negative", "allow", "block", "blockHard", "alwaysAllow"];
 const MAX_FILTER_ENTRIES = 300;
+const MAX_AGE_HOURS = 24 * 365;
 
 // Same shape as a scheduled scan's `filters` (title positive/negative, location allow/block/blockHard/alwaysAllow).
 function parseFilters(raw) {
@@ -33,17 +34,23 @@ function parseHours(value) {
   return { startMin: h1 * 60 + m1, endMin: h2 * 60 + m2 };
 }
 
-export function parseWatchConfig(raw) {
-  if (!raw || typeof raw !== "object") throw new WatchConfigError("config must be an object");
+/** The URL object for a LinkedIn jobs search, or a WatchConfigError saying what is wrong. */
+export function parseSearchUrl(value) {
   let url;
   try {
-    url = new URL(String(raw.search_url ?? ""));
+    url = new URL(String(value ?? ""));
   } catch {
     throw new WatchConfigError("search_url must be a LinkedIn jobs search URL");
   }
   if (url.protocol !== "https:" || url.hostname !== "www.linkedin.com" || !url.pathname.startsWith("/jobs/search")) {
     throw new WatchConfigError("search_url must be https://www.linkedin.com/jobs/search/...");
   }
+  return url;
+}
+
+export function parseWatchConfig(raw) {
+  if (!raw || typeof raw !== "object") throw new WatchConfigError("config must be an object");
+  const url = parseSearchUrl(raw.search_url);
   const intervalMinutes = raw.interval_minutes ?? 10;
   if (typeof intervalMinutes !== "number" || !(intervalMinutes >= MIN_INTERVAL)) {
     throw new WatchConfigError(`interval_minutes must be at least ${MIN_INTERVAL}`);
@@ -64,8 +71,13 @@ export function parseWatchConfig(raw) {
   if (!Number.isInteger(deepPages) || deepPages < 1 || deepPages > MAX_DEEP_PAGES) {
     throw new WatchConfigError(`deep_pages must be a whole number from 1 to ${MAX_DEEP_PAGES}`);
   }
+  // Optional: ignore jobs whose LinkedIn age is above this many hours (the URL's own date filter is not always strict).
+  const maxAgeHours = raw.max_age_hours ?? null;
+  if (maxAgeHours !== null && (!Number.isInteger(maxAgeHours) || maxAgeHours < 1 || maxAgeHours > MAX_AGE_HOURS)) {
+    throw new WatchConfigError(`max_age_hours must be a whole number of hours from 1 to ${MAX_AGE_HOURS}`);
+  }
   const activeHours = raw.active_hours ? parseHours(raw.active_hours) : null;
-  return { searchUrl: url.toString(), intervalMinutes, jitterPercent, maxPollsPerDay, activeHours, pagesPerPoll, deepPages, filters: parseFilters(raw.filters) };
+  return { searchUrl: url.toString(), intervalMinutes, jitterPercent, maxPollsPerDay, activeHours, pagesPerPoll, deepPages, maxAgeHours, filters: parseFilters(raw.filters) };
 }
 
 export function nextDelayMs(cfg, random) {

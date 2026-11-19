@@ -22,7 +22,7 @@ function jobIdOf(card) {
 }
 
 const VIEW_LINK = "a[href*='/jobs/view/']";
-const POSTED_RE = /(second|minute|hour|day|week|detik|menit|jam|hari|minggu).*(ago|lalu)|^(just now|baru saja)/i;
+const POSTED_RE = /(second|minute|hour|day|week|month|year|detik|menit|jam|hari|minggu|bulan|tahun).*(ago|lalu)|^(just now|baru saja)/i;
 
 // Fallback that does not depend on class names: every job card links to /jobs/view/<id>.
 // The id comes from the link; title, company and location are best-effort from the card's text lines.
