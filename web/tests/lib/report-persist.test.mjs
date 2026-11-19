@@ -303,7 +303,7 @@ test("persistEvaluation: writes report + TSV, reserves, merges, releases", async
     assert.deepEqual(missing, []);
     assert.equal(fields[map.company], "Acme AI");
     assert.equal(fields[map.status], "Evaluated");
-    assert.equal(fields[map.notes], "; posted: 2026-08-01");
+    assert.equal(fields[map.notes], "posted: 2026-08-01");
     assert.equal(fields[map.url], "https://acme.com/jobs/7");
 
     const scripts = calls.map((c) => basename(c.args[0]) + (c.args.includes("--release") ? " --release" : ""));
@@ -565,4 +565,26 @@ test("persistEvaluation: refuses a non-ISO today rather than joining it into a p
   });
   assert.equal(result.ok, false);
   assert.match(result.error, /Invalid evaluation date/);
+});
+
+test("persistEvaluation: the tracker note has no leading or doubled separator", async () => {
+  const notesFor = async (extra) => {
+    const root = mkdtempSync(join(tmpdir(), "co-evalpersist-notes-"));
+    const { spawnFn, calls } = makeRouterSpawn({
+      "reserve-report-num.mjs": (args) => args.includes("--release") ? { exitCode: 0 } : { exitCode: 0, stdout: "035\n" },
+      "persist-evaluation-report.mjs": writerSpec(),
+      "merge-tracker.mjs": { exitCode: 0 },
+    });
+    try {
+      await persistEvaluation({ spawnFn, execPath: "node", root, markdown: REPORT, url: "https://jobs.example.test/7", today: "2026-10-25", ...extra });
+      const writer = calls.find((c) => c.args[0].endsWith("persist-evaluation-report.mjs"));
+      return JSON.parse(writer.stdin).notes;
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  };
+  assert.equal(await notesFor({ postedAt: "2026-10-20" }), "posted: 2026-10-20");
+  assert.equal(await notesFor({}), "");
+  assert.equal(await notesFor({ postedAt: "2026-10-20", evaluationSections: ["summary"] }), "posted: 2026-10-20; Focused evaluation: summary");
+  assert.equal(await notesFor({ evaluationSections: ["summary"] }), "Focused evaluation: summary");
 });

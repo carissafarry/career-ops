@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { CompanyLogo } from "@/components/company-logo";
 import { CANONICAL_STATES, scoreNum, scoreTone } from "@/lib/format";
 import { StatusSelect } from "@/components/status-select";
+import { TrackerNoteCell } from "@/components/tracker-note-cell";
 import { applicationKey, applySavedStatus, saveStatuses } from "@/lib/pipeline-status.mjs";
 import { InboxTriage } from "@/components/inbox/inbox-triage";
 import type { ScanRunSummary } from "@/lib/scan-runs";
@@ -519,7 +520,8 @@ export function PipelineView({
   const mountedRows = filtered.slice(span.start, span.end);
   const offscreenFailures = offscreenStatusFailures(heldSaves, mountedRows.map((row) => applicationKey(row)));
   // The checkbox, the sortable columns and the resume column.
-  const columnCount = SORT_KEYS.length + 2;
+  const NOTES_COL_W = 240; // px; the Notes column is fixed width, the layout is table-fixed
+  const columnCount = SORT_KEYS.length + 3; // checkbox, the sortable columns, notes and resume
 
   // Column widths the user dragged, in px by column key. Null keeps DEFAULT_COL_W. The checkbox and resume columns stay as they are, and resume takes
   // up whatever width the others leave.
@@ -1144,7 +1146,7 @@ export function PipelineView({
           <table
             ref={tableRef}
             data-col-sized=""
-            style={{ minWidth: 44 + SORT_KEYS.reduce((sum, k) => sum + (k === "date" ? 0 : cw[k]), 0) + 96 }}
+            style={{ minWidth: 44 + SORT_KEYS.reduce((sum, k) => sum + (k === "date" ? 0 : cw[k]), 0) + 96 }} // the notes column only shows from lg up, where the date column does too
             aria-label="Tracked applications"
             aria-rowcount={filtered.length + 1}
             className="w-full text-sm"
@@ -1154,6 +1156,7 @@ export function PipelineView({
               {SORT_KEYS.map((k) => (
                 <col key={k} style={{ width: cw[k] }} className={k === "date" ? "hidden lg:table-column" : undefined} />
               ))}
+              <col style={{ width: NOTES_COL_W }} className="hidden lg:table-column" />
               <col />
             </colgroup>
             <thead className="bg-surface/60 text-left text-xs tracking-[0.01em] text-faint">
@@ -1199,6 +1202,7 @@ export function PipelineView({
                     />
                   </th>
                 ))}
+                <th className="hidden whitespace-nowrap px-4 py-2.5 font-medium lg:table-cell">notes</th>
                 <th className="whitespace-nowrap px-4 py-2.5 font-medium">resume</th>
               </tr>
             </thead>
@@ -1372,6 +1376,9 @@ const TrackerRow = memo(function TrackerRow({
         />
       </td>
       <td className="hidden whitespace-nowrap px-4 py-3 text-faint tabular-nums lg:table-cell">{r.date}</td>
+      <td className="hidden px-4 py-3 lg:table-cell">
+        <TrackerNoteCell n={r.n} status={r.status} note={r.notes} />
+      </td>
       <td className="whitespace-nowrap px-4 py-3">
         {hasCv ? (
           <a

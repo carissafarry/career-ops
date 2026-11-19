@@ -305,8 +305,11 @@ export async function persistEvaluation({ spawnFn, execPath, root, coreRoot = ro
   }
 
   const postingUrl = /^https?:\/\//i.test(String(url ?? "")) ? String(url) : "";
-  const notes = (ISO_DATE_RE.test(String(postedAt ?? "")) ? `; posted: ${postedAt}` : "")
-    + (!evaluation.full ? `; Focused evaluation: ${evaluation.sections.join(", ") || "fit score only"}` : "");
+  // Joined, not concatenated with a leading "; ": with only one part the note used to start with a dangling separator.
+  const notes = [
+    ISO_DATE_RE.test(String(postedAt ?? "")) ? `posted: ${postedAt}` : "",
+    !evaluation.full ? `Focused evaluation: ${evaluation.sections.join(", ") || "fit score only"}` : "",
+  ].filter(Boolean).join("; ");
 
   const written = await spawnScript({
     spawnFn, execPath, root: coreRoot, cwd: root,

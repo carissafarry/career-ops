@@ -6,8 +6,7 @@ const clean = (s) => String(s ?? "").replace(/[\t\r\n|]+/g, " ").replace(/\s+/g,
 export const companySlug = (company) =>
   clean(company).toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "linkedin";
 
-export function buildTrackerAddition({ num, date, posting, status = "Applied" }) {
-  const location = clean(posting.location);
+export function buildTrackerAddition({ num, date, posting, status = "Applied", note = "" }) {
   const row = [
     num,
     date,
@@ -17,7 +16,7 @@ export function buildTrackerAddition({ num, date, posting, status = "Applied" })
     "N/A",
     "❌",
     "—",
-    `LinkedIn watch${location ? `; ${location}` : ""}`,
+    clean(note), // only what the user wrote; the place and the source are not repeated here,
     clean(posting.link),
   ];
   return {

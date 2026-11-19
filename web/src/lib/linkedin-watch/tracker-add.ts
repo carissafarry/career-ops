@@ -29,13 +29,13 @@ async function closeInboxRow(url: string): Promise<void> {
  * by hand: reserve a number, write the tracker-addition TSV, run merge-tracker.mjs, release the number.
  * merge-tracker updates the existing row instead when the company and role are already tracked.
  */
-export async function addAppliedToTracker(posting: Posting): Promise<{ ok: boolean; error?: string }> {
+export async function addAppliedToTracker(posting: Posting, note = ""): Promise<{ ok: boolean; error?: string }> {
   const reserved = await runCoreCli("reserve-report-num", []);
   const num = reserved.stdout.trim().split(/\s+/)[0] ?? "";
   if (reserved.code !== 0 || !/^\d+$/.test(num)) return { ok: false, error: "Could not reserve a tracker number." };
   let file = "";
   try {
-    const { fileName, content } = buildTrackerAddition({ num, date: localDate(), posting });
+    const { fileName, content } = buildTrackerAddition({ num, date: localDate(), posting, note });
     const dir = path.join(careerOpsRoot(), "batch", "tracker-additions");
     fs.mkdirSync(dir, { recursive: true });
     file = path.join(dir, fileName);
