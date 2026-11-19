@@ -12,6 +12,8 @@ export type ScanRun = {
   added: number;
   filteredTitle: number;
   dupes: number;
+  /** LinkedIn watcher polls only: how many of the `found` jobs matched the user's filters. */
+  kept?: number;
   postings: ScanPosting[];
 };
 /** What the pipeline's scan selector needs: no postings, just the label data. */
@@ -36,6 +38,7 @@ export function readScanRuns(): ScanRun[] {
     historyTsv: readData("data/scan-history.tsv"),
     originTsv: readData("data/scan-origin.tsv"),
     postingsTsv: readData("data/scan-run-postings.tsv"),
+    linkedinPollsTsv: readData("data/linkedin-watch-polls.tsv"),
   }) as ScanRun[];
 }
 

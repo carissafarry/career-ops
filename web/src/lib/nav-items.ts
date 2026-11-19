@@ -1,3 +1,4 @@
+import { LinkedInIcon } from "@/components/icons/linkedin-icon";
 import { LayoutDashboard, Compass, ListChecks, Send, Radar, BarChart3, FileText, Files, Settings, CalendarClock, History } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
@@ -14,6 +15,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Today", icon: LayoutDashboard },
   { href: "/explore", label: "Explore", icon: Compass, chip: "New" },
   { href: "/scheduled-scans", label: "Scheduled scans", icon: CalendarClock },
+  { href: "/linkedin", label: "LinkedIn", icon: LinkedInIcon },
   { href: "/scans", label: "Scans", icon: History },
   { href: "/pipeline", label: "Pipeline", icon: ListChecks },
   { href: "/followups", label: "Follow-ups", icon: Send },

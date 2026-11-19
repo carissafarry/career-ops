@@ -4,6 +4,7 @@ import { listScheduledJobs } from "@/lib/scheduled-jobs";
 import { scanOwners } from "@/lib/scan-for-run.mjs";
 import { locationKeys } from "@/lib/location-geo.mjs";
 import { cn } from "@/lib/cn";
+import { AutoRefresh } from "@/components/auto-refresh";
 import { PageFrame } from "@/components/page-frame";
 import { ScanResults } from "@/components/scans/scan-results";
 
@@ -18,11 +19,15 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
   const store = listScheduledJobs();
   const owners = scanOwners(allRuns, store.runs, store.jobs);
   const jobOptions = [...new Map([...owners.values()].map((o) => [o.jobId, o.name])).entries()].map(([id, name]) => ({ id, name }));
-  const hasManual = allRuns.some((r) => !owners.has(r.id));
+  const isLinkedIn = (id: string) => id.startsWith("linkedin-");
+  const hasLinkedIn = allRuns.some((r) => isLinkedIn(r.id));
+  const hasManual = allRuns.some((r) => !owners.has(r.id) && !isLinkedIn(r.id));
   const jobFilter = first(params.job);
   const runs = allRuns.filter((r) => {
-    if (!jobFilter) return true;
-    if (jobFilter === "manual") return !owners.has(r.id);
+    // A poll that found nothing is history worth keeping, but ~12 an hour would bury every other scan in "All".
+    if (!jobFilter) return !(isLinkedIn(r.id) && r.added === 0);
+    if (jobFilter === "linkedin") return isLinkedIn(r.id);
+    if (jobFilter === "manual") return !owners.has(r.id) && !isLinkedIn(r.id);
     return owners.get(r.id)?.jobId === jobFilter;
   });
   const wanted = first(params.run);
@@ -37,15 +42,16 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
 
   return (
     <PageFrame width="wide" className="space-y-8">
+      <AutoRefresh seconds={10} />
       <div>
         <h1 className="font-display text-3xl text-landing">Scans</h1>
         <p className="mt-2 text-base text-muted">Every scan, and the roles it added. Pick one to see its results.</p>
       </div>
 
-      {allRuns.length > 0 && (jobOptions.length > 0 || hasManual) && (
+      {allRuns.length > 0 && (jobOptions.length > 0 || hasManual || hasLinkedIn) && (
         <nav aria-label="Filter scans by scheduled scan" className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-faint">From</span>
-          {[{ id: "", name: "All" }, ...jobOptions, ...(hasManual ? [{ id: "manual", name: "Run by hand" }] : [])].map((option) => {
+          {[{ id: "", name: "All" }, ...jobOptions, ...(hasLinkedIn ? [{ id: "linkedin", name: "LinkedIn" }] : []), ...(hasManual ? [{ id: "manual", name: "Run by hand" }] : [])].map((option) => {
             const on = (jobFilter ?? "") === option.id;
             return (
               <Link
@@ -70,7 +76,7 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
         </p>
       ) : runs.length === 0 ? (
         <p className="rounded-2xl border border-border bg-surface px-6 py-8 text-base text-muted shadow-card">
-          No scans from this scheduled scan yet.
+          No scans match this filter yet.
         </p>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
@@ -93,6 +99,12 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
                     <span className={cn("block font-semibold", active ? "text-brand-text" : "text-foreground")}>{scanLabel(run)}</span>
                     <span className="mt-0.5 block text-sm text-muted">
                       <span className="font-semibold tabular-nums text-foreground">{run.added}</span> new
+                      {isLinkedIn(run.id) && run.found > 0 && (
+                        <>
+                          {" · "}
+                          <span className="tabular-nums">{run.found}</span> read, <span className="tabular-nums">{run.kept ?? 0}</span> match
+                        </>
+                      )}
                       {run.kind === "filtered" && (
                         <>
                           {" · "}
@@ -110,7 +122,9 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
             <section aria-label={scanLabel(selected)} className="min-w-0 rounded-2xl border border-border bg-surface p-5 shadow-card sm:p-6">
               <h2 className="text-xl font-bold tracking-[-0.01em] text-landing">{selectedOwner ? `${selectedOwner.name} · ${scanLabel(selected)}` : scanLabel(selected)}</h2>
               <p className="mt-1 text-sm text-muted">
-                {selected.kind === "full"
+                {selected.id.startsWith("linkedin-")
+                  ? `One LinkedIn watcher poll: ${selected.found} jobs read from your saved search, ${selected.kept ?? 0} match your filters, ${selected.added} of them new (${Math.max((selected.kept ?? 0) - selected.added, 0)} already seen in an earlier poll). The first poll lists everything that matches.`
+                  : selected.kind === "full"
                   ? "Full ATS sweep across Greenhouse, Lever, Ashby, Workday and more."
                   : `${selected.found.toLocaleString("en-US")} checked, ${selected.filteredTitle.toLocaleString("en-US")} dropped by the title filter, ${selected.dupes.toLocaleString("en-US")} already seen.`}
               </p>

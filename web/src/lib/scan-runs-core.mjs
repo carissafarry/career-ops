@@ -13,7 +13,7 @@ const splitLines = (text) => String(text ?? "").split(/\r?\n/).filter((line) => 
 const toRows = (text) => splitLines(text).map((line) => line.split("\t"));
 
 /** @typedef {{url: string, company: string, role: string, location: string, firstSeen: string, postedAt?: string}} ScanPosting */
-/** @typedef {{id: string, kind: "filtered" | "full", startedAt: string, found: number, added: number, filteredTitle: number, dupes: number, postings: ScanPosting[]}} ScanRun */
+/** @typedef {{id: string, kind: "filtered" | "full", startedAt: string, found: number, added: number, filteredTitle: number, dupes: number, kept?: number, postings: ScanPosting[]}} ScanRun */
 
 function columnIndex(header) {
   const index = new Map();
@@ -33,10 +33,10 @@ function historyPosting(cols) {
 }
 
 /**
- * @param {{runsTsv?: string, historyTsv?: string, originTsv?: string, postingsTsv?: string}} input
+ * @param {{runsTsv?: string, historyTsv?: string, originTsv?: string, postingsTsv?: string, linkedinPollsTsv?: string}} input
  * @returns {ScanRun[]} newest first
  */
-export function buildScanRuns({ runsTsv = "", historyTsv = "", originTsv = "", postingsTsv = "" }) {
+export function buildScanRuns({ runsTsv = "", historyTsv = "", originTsv = "", postingsTsv = "", linkedinPollsTsv = "" }) {
   const originRows = toRows(originTsv).filter((cols, i) => !(i === 0 && cols[0] === "url"));
   const fullUrls = new Set(originRows.map((cols) => cols[0]));
 
@@ -124,6 +124,18 @@ export function buildScanRuns({ runsTsv = "", historyTsv = "", originTsv = "", p
     }
   }
 
+  // The LinkedIn watcher logs every poll in data/linkedin-watch-polls.tsv (read, kept by the filters, listed).
+  // A poll that listed roles already has a run from scan-origin.tsv (same id); one that found nothing gets an empty run.
+  for (const cols of toRows(linkedinPollsTsv)) {
+    const [startedAt, read, kept, added] = cols;
+    if (!startedAt || startedAt === "started_at") continue;
+    const id = `linkedin-${startedAt}`;
+    const counts = { found: Number.parseInt(read, 10) || 0, kept: Number.parseInt(kept, 10) || 0 };
+    const existing = fullById.get(id);
+    if (existing) Object.assign(existing, counts);
+    else fullById.set(id, { id, kind: "full", startedAt, filteredTitle: 0, dupes: 0, added: Number.parseInt(added, 10) || 0, postings: [], ...counts });
+  }
+
   return [...filtered, ...fullById.values()].sort((a, b) => (a.startedAt < b.startedAt ? 1 : a.startedAt > b.startedAt ? -1 : 0));
 }
 
@@ -133,7 +145,8 @@ export function scanLabel(run) {
   const when = Number.isNaN(d.getTime())
     ? run.startedAt
     : d.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false });
-  return `${run.kind === "full" ? "Full scan" : "Scan"} ${when}`;
+  const name = String(run.id).startsWith("linkedin-") ? "LinkedIn watch" : run.kind === "full" ? "Full scan" : "Scan";
+  return `${name} ${when}`;
 }
 
 /** url -> run id, for the pipeline's "which scan" selector. */
