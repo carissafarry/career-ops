@@ -17,7 +17,7 @@ import { FacetChips } from "./facet-chips";
 import { useSourceFilter } from "@/lib/source-exclusions";
 import type { ScanRunSummary } from "@/lib/scan-runs";
 import { scanLabel } from "@/lib/scan-runs-core.mjs";
-import { locationExcluded, locationMatches } from "@/lib/location-facet.mjs";
+import { locationExcluded, locationMatchesAny } from "@/lib/location-facet.mjs";
 import { TriageRow, type RowScore } from "./triage-row";
 import { ShortlistTray, type ShortItem } from "./shortlist-tray";
 import { cn } from "@/lib/cn";
@@ -197,7 +197,7 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
         if (sources.size && (!e.source || !sources.has(e.source))) return false;
         if (seniorities.size && (!e.seniority || !seniorities.has(e.seniority))) return false;
         if (scanId && scans?.byUrl[e.job.url] !== scanId) return false;
-        if (locQ.trim() && !locationMatches(e.job.locationKeys ?? e.job.location ?? "", locQ)) return false;
+        if (locQ.trim() && !locationMatchesAny(e.job.locationKeys ?? e.job.location ?? "", locQ)) return false;
         if (locationExcluded(e.job.locationKeys ?? e.job.location ?? "", locNot)) return false;
         if (kw.trim() && !`${e.job.company} ${e.job.role}`.toLowerCase().includes(kw.trim().toLowerCase())) return false;
         return true;

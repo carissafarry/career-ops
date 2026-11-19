@@ -41,3 +41,12 @@ export function locationExcluded(keys, query) {
     .split(",")
     .some((part) => normalizeLocation(part) !== "" && locationMatches(keys, part));
 }
+
+/**
+ * True when the text matches any place in the comma-separated `query`; an empty
+ * query matches everything. The include box takes "Indonesia, Singapore" this way.
+ */
+export function locationMatchesAny(keys, query) {
+  const parts = String(query ?? "").split(",").filter((part) => normalizeLocation(part) !== "");
+  return parts.length === 0 || parts.some((part) => locationMatches(keys, part));
+}

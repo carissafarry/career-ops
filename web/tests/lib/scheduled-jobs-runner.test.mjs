@@ -1053,7 +1053,10 @@ test("a full scan with job boards sweeps company sources, then reads the boards 
     assert.deepEqual(boards.tracked_companies, []);
     assert.ok(boards.job_boards.some((e) => e.provider === "jobstreet" && e.searchKeywords === "Application Developer"));
     assert.deepEqual(boards.title_filter.positive, ["Management Trainee", "Application Developer"]);
-    assert.deepEqual(boards.location_filter.allow, ["Indonesia"]);
+    // A country is widened to its cities and provinces, so "Bandung, West Java" still passes.
+    assert.equal(boards.location_filter.allow[0], "Indonesia");
+    assert.ok(boards.location_filter.allow.includes("Bandung"));
+    assert.ok(boards.location_filter.allow.includes("West Java"));
     assert.equal(result.state, "success");
     assert.equal(result.rolesFound, 7);
     assert.match(result.message, /7 matching roles \(company boards 4, job boards 3\)/);

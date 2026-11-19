@@ -9,6 +9,7 @@
 // the serializer never emitted is a filter the user set and the scan ignored.
 
 import { expandLocationTerms } from "../location-spellings.mjs";
+import { expandPlaces } from "../location-geo.mjs";
 
 /** One YAML list block, or "" when empty. Scalars go through JSON.stringify (a
  *  valid YAML double-quoted scalar) so arbitrary keywords — colons, quotes,
@@ -39,11 +40,13 @@ export function serializePortals(f) {
   }
   if (f.blockHard.length || f.allow.length || f.block.length || f.alwaysAllow.length) {
     out += "location_filter:\n";
-    // Each place also goes in under its other spellings, so "Jogja" catches "Yogyakarta".
+    // Include and exclude widen a country to its cities and provinces ("Indonesia" catches
+    // "Bandung, West Java"), and every tier widens a place to its other spellings ("Jogja"
+    // catches "Yogyakarta"). "Never include" and "Always include" stay as typed plus spellings.
     out += block("block_hard", expandLocationTerms(f.blockHard));
     out += block("always_allow", expandLocationTerms(f.alwaysAllow));
-    out += block("allow", expandLocationTerms(f.allow));
-    out += block("block", expandLocationTerms(f.block));
+    out += block("allow", expandPlaces(f.allow));
+    out += block("block", expandPlaces(f.block));
   }
   return out;
 }

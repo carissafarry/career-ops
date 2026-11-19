@@ -6,6 +6,8 @@ import { ATS_LABEL } from "@/lib/explore";
 import { FRESHNESS_WINDOWS, SENIORITY_LABEL, type Seniority } from "@/lib/inbox";
 import { CostBadge } from "@/components/cost/cost-badge";
 import { cn } from "@/lib/cn";
+import { CountryTemplates } from "@/components/country-templates";
+import { listOf, textOf } from "@/lib/location-countries.mjs";
 import { SourceExclusionMenu } from "@/components/inbox/source-exclusion-menu";
 import type { SourceScope } from "@/lib/source-exclusions";
 
@@ -118,8 +120,16 @@ export function FacetChips({
           </Row>
         )}
 
+        <Row label="Country">
+          <CountryTemplates
+            include={listOf(locQ)}
+            exclude={listOf(locNot)}
+            onChange={(next) => { setLocQ(textOf(next.include)); setLocNot(textOf(next.exclude)); }}
+          />
+        </Row>
+
         <Row label="Location">
-          <TextFilter value={locQ} onChange={setLocQ} placeholder="Country or city" ariaLabel="Location or country" />
+          <TextFilter value={locQ} onChange={setLocQ} placeholder="Country or city, or a few" ariaLabel="Location or country" />
           <span className="shrink-0 text-xs text-faint">but not</span>
           <TextFilter value={locNot} onChange={setLocNot} placeholder="Jogja, Bali" ariaLabel="Hide locations" />
         </Row>

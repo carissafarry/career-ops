@@ -34,7 +34,9 @@ test("all location tiers round-trip through YAML", () => {
   assert.deepEqual(lf.block_hard, ["usa"]);
   assert.deepEqual(lf.always_allow, ["london"]);
   assert.deepEqual(lf.allow, ["remote"]);
-  assert.deepEqual(lf.block, ["india"]);
+  // A country name is widened to its cities; the typed name stays first.
+  assert.equal(lf.block[0], "india");
+  assert.ok(lf.block.includes("Mumbai"));
 });
 
 test("no location tiers → no location_filter section", () => {

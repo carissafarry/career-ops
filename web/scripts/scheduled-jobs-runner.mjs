@@ -13,6 +13,7 @@ import {
 } from "../src/lib/scheduled-jobs-store.mjs";
 import { nextScheduledRun } from "../src/lib/scheduled-cadence.mjs";
 import { BOARD_ENTRIES, isBoardSource } from "../src/lib/board-sources.mjs";
+import { expandPlaces } from "../src/lib/location-geo.mjs";
 import { expandLocationTerms } from "../src/lib/location-spellings.mjs";
 import { isMainModule } from "../../lib/is-main-module.mjs";
 import { scheduledRunnerResourcePath, scheduledStorePath } from "../src/lib/scheduled-runner-path.mjs";
@@ -209,9 +210,11 @@ function writeJobPortals(root, job, options = {}) {
   if (base.title_filter_full) base.title_filter_full = { ...base.title_filter_full, ...base.title_filter };
   base.location_filter = {
     ...(base.location_filter || {}),
-    // Each place also goes in under its other spellings, so "Jogja" catches "Yogyakarta".
-    allow: expandLocationTerms(filters.allow),
-    block: expandLocationTerms(filters.block),
+    // Include and exclude widen a country to its cities and provinces ("Indonesia" catches
+    // "Bandung, West Java"), and every tier widens a place to its other spellings ("Jogja"
+    // catches "Yogyakarta"). "Never include" and "Always include" stay as typed plus spellings.
+    allow: expandPlaces(filters.allow),
+    block: expandPlaces(filters.block),
     block_hard: expandLocationTerms(filters.blockHard),
     always_allow: expandLocationTerms(filters.alwaysAllow),
   };

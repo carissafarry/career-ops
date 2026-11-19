@@ -9,7 +9,7 @@
 
 import cities from "all-the-cities";
 import { normalizeLocation } from "./location-facet.mjs";
-import { SPELLINGS } from "./location-spellings.mjs";
+import { SPELLINGS, expandLocationTerms } from "./location-spellings.mjs";
 
 // Region and administrative words that follow a place name ("Yogyakarta Special Region").
 const TAIL_WORDS = new Set(["special", "region", "province", "state", "county", "district", "regency", "prefecture", "governorate", "metropolitan", "area", "city", "capital", "territory"]);
@@ -125,4 +125,77 @@ export function locationKeys(location) {
     if (hasWord(text, spelling)) extras.push(canonical);
   }
   return [raw.toLowerCase(), text, ...extras].join(" | ");
+}
+
+// Provinces that job boards write after a city with no country ("Bandung, West Java"),
+// so a bare country name can still find those postings. Only where the city list alone
+// leaves gaps; every other country is covered by its cities.
+const REGIONS = {
+  ID: [
+    "Aceh", "North Sumatra", "West Sumatra", "Riau", "Riau Islands", "Jambi", "South Sumatra", "Bengkulu", "Lampung",
+    "Bangka Belitung", "Jakarta", "Banten", "West Java", "Central Java", "East Java", "Yogyakarta", "Bali",
+    "West Nusa Tenggara", "East Nusa Tenggara", "West Kalimantan", "Central Kalimantan", "South Kalimantan",
+    "East Kalimantan", "North Kalimantan", "North Sulawesi", "Central Sulawesi", "South Sulawesi", "Southeast Sulawesi",
+    "Gorontalo", "West Sulawesi", "Maluku", "North Maluku",
+  ],
+};
+
+let bigCityCountryIndex; // normalized name -> countries that have a big city of that name
+function bigCityCountries() {
+  if (!bigCityCountryIndex) {
+    bigCityCountryIndex = new Map();
+    for (const city of cities) {
+      if (city.population < COUNTRY_CITY_MIN_POPULATION) continue;
+      const key = normalizeLocation(city.name);
+      if (!bigCityCountryIndex.has(key)) bigCityCountryIndex.set(key, new Set());
+      bigCityCountryIndex.get(key).add(city.country);
+    }
+  }
+  return bigCityCountryIndex;
+}
+
+const COUNTRY_CITY_LIMIT = 250;
+const COUNTRY_CITY_MIN_POPULATION = 50000;
+
+/**
+ * A scan matches a place by the words in a posting's location, and many boards write
+ * only "Bandung, West Java". So a country name in a location list is widened to the
+ * country, its biggest cities and, where known, its provinces. Anything that is not a
+ * country name is returned as typed.
+ *
+ * @param {string[]} terms
+ * @returns {string[]}
+ */
+export function expandCountryTerms(terms) {
+  countryNames ??= buildCountryNames();
+  const uniqueTo = (city) => bigCityCountries().get(normalizeLocation(city.name))?.size === 1;
+  const out = [];
+  const seen = new Set();
+  const add = (term) => {
+    const key = normalizeLocation(term);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push(term);
+  };
+  for (const term of Array.isArray(terms) ? terms : []) {
+    if (typeof term !== "string") continue;
+    add(term);
+    const key = normalizeLocation(term);
+    const code = key.length >= 3 ? countryNames.get(key) : undefined;
+    if (!code) continue;
+    add(regionName(code));
+    // Only names no other country's big city shares: "Birmingham" would otherwise pull in the UK.
+    const biggest = cities
+      .filter((city) => city.country === code && city.population >= COUNTRY_CITY_MIN_POPULATION && uniqueTo(city))
+      .sort((a, b) => b.population - a.population)
+      .slice(0, COUNTRY_CITY_LIMIT);
+    for (const city of biggest) add(city.name);
+    for (const region of REGIONS[code] ?? []) add(region);
+  }
+  return out;
+}
+
+/** What a scan's location lists are built from: countries widened, then spellings widened. */
+export function expandPlaces(terms) {
+  return expandLocationTerms(expandCountryTerms(terms));
 }

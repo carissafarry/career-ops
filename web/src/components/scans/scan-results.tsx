@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { AtsSource } from "@/lib/explore";
 import { ATS_SOURCES } from "@/lib/explore";
 import { SENIORITY_ORDER, daysSince, seniorityFromTitle, sourceFromUrl, type Seniority } from "@/lib/inbox";
-import { locationExcluded, locationMatches } from "@/lib/location-facet.mjs";
+import { locationExcluded, locationMatchesAny } from "@/lib/location-facet.mjs";
 import { FacetChips } from "@/components/inbox/facet-chips";
 import { useSourceFilter } from "@/lib/source-exclusions";
 
@@ -67,7 +67,7 @@ export function ScanResults({ postings }: { postings: ScanResultRow[] }) {
         if (within != null && (e.age == null || e.age > within)) return false;
         if (sources.size && (!e.source || !sources.has(e.source))) return false;
         if (seniorities.size && (!e.seniority || !seniorities.has(e.seniority))) return false;
-        if (locQ.trim() && !locationMatches(e.posting.locationKeys || e.posting.location, locQ)) return false;
+        if (locQ.trim() && !locationMatchesAny(e.posting.locationKeys || e.posting.location, locQ)) return false;
         if (locationExcluded(e.posting.locationKeys || e.posting.location, locNot)) return false;
         if (kw.trim() && !`${e.posting.company} ${e.posting.role}`.toLowerCase().includes(kw.trim().toLowerCase())) return false;
         return true;

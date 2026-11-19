@@ -5,7 +5,7 @@ import { Plus, ArrowUpDown, ChevronDown, Check, LayoutGrid, List } from "lucide-
 import { cn } from "@/lib/cn";
 import { ATS_SOURCES, type AtsSource, type DiscoveredOffer } from "@/lib/explore";
 import { SENIORITY_ORDER, daysSince, seniorityFromTitle, sourceFromUrl, type Seniority } from "@/lib/inbox";
-import { locationExcluded, locationMatches } from "@/lib/location-facet.mjs";
+import { locationExcluded, locationMatchesAny } from "@/lib/location-facet.mjs";
 import { FacetChips } from "@/components/inbox/facet-chips";
 import { RemovedBar } from "./removed-bar";
 import { useSourceFilter } from "@/lib/source-exclusions";
@@ -87,7 +87,7 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
           if (within != null && (t.age == null || t.age > within)) return false;
           if (sources.size && (!t.source || !sources.has(t.source))) return false;
           if (seniorities.size && (!t.seniority || !seniorities.has(t.seniority))) return false;
-          if (locQ.trim() && !locationMatches(t.offer.locationKeys || t.offer.location || "", locQ)) return false;
+          if (locQ.trim() && !locationMatchesAny(t.offer.locationKeys || t.offer.location || "", locQ)) return false;
           if (locationExcluded(t.offer.locationKeys || t.offer.location || "", locNot)) return false;
           return true;
         })
