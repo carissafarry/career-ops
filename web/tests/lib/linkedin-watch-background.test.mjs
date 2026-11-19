@@ -94,3 +94,43 @@ test("a page with fewer than 25 jobs is the last one: no further page is loaded"
   assert.deepEqual([out.pages, out.cards.length, out.stop], [2, 33, "last-page"]);
   assert.deepEqual(h.visited.map((u) => new URL(u).searchParams.get("start")), ["25"]); // start=50 is never requested
 });
+
+// ---- following the planned next poll when the interval is changed
+function bootHarness({ alarm, config }) {
+  const calls = { created: [] };
+  const ctx = vm.createContext({
+    URL, console, Promise, Set, Date, Math, AbortSignal,
+    setTimeout: () => 0, clearTimeout: () => {},
+    fetch: async () => ({ json: async () => config }),
+    chrome: {
+      alarms: { create: async (name, info) => { calls.created.push([name, info]); }, clear: async () => {}, get: async () => alarm, onAlarm: { addListener() {} } },
+      runtime: { onInstalled: { addListener() {} }, onStartup: { addListener() {} } },
+      storage: { local: { get: async () => ({}), set: async () => {} } },
+      tabs: { onUpdated: { addListener() {}, removeListener() {} } },
+      windows: {},
+    },
+  });
+  vm.runInContext(src, ctx);
+  return { boot: () => vm.runInContext("boot", ctx)(), calls };
+}
+
+test("when the app moves the planned next poll, the extension moves its alarm to match", async () => {
+  const planned = Date.now() + 10 * 60_000;
+  const h = bootHarness({ alarm: { name: "poll", scheduledTime: Date.now() + 2 * 60_000 }, config: { enabled: true, runNow: false, nextPollAt: new Date(planned).toISOString() } });
+  await h.boot();
+  assert.equal(h.calls.created.length, 1);
+  assert.ok(Math.abs(h.calls.created[0][1].when - planned) < 2_000);
+});
+
+test("the extension leaves its alarm alone when it already matches, or when the planned time is stale", async () => {
+  const soon = Date.now() + 4 * 60_000;
+  const same = bootHarness({ alarm: { name: "poll", scheduledTime: soon + 400 }, config: { enabled: true, runNow: false, nextPollAt: new Date(soon).toISOString() } });
+  await same.boot();
+  assert.equal(same.calls.created.length, 0);
+  const stale = bootHarness({ alarm: { name: "poll", scheduledTime: Date.now() + 4 * 60_000 }, config: { enabled: true, runNow: false, nextPollAt: new Date(Date.now() - 60_000).toISOString() } });
+  await stale.boot();
+  assert.equal(stale.calls.created.length, 0); // a past time never turns into a burst of polls
+  const none = bootHarness({ alarm: { name: "poll", scheduledTime: Date.now() + 4 * 60_000 }, config: { enabled: true, runNow: false, nextPollAt: null } });
+  await none.boot();
+  assert.equal(none.calls.created.length, 0);
+});

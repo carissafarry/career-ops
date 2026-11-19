@@ -136,8 +136,19 @@ async function boot() {
     const cfg = await appConfig();
     if (cfg.enabled && cfg.runNow) {
       await poll();
-    } else if (cfg.enabled && !(await chrome.alarms.get(POLL))) {
+      return;
+    }
+    if (!cfg.enabled) return;
+    const alarm = await chrome.alarms.get(POLL);
+    if (!alarm) {
       await schedule(MIN_DELAY_MS);
+      return;
+    }
+    // The app re-plans the next poll when the interval is changed: follow it. A time that is not clearly in the
+    // future is ignored, so a stale value can never turn into a burst of polls.
+    const planned = Date.parse(cfg.nextPollAt);
+    if (Number.isFinite(planned) && planned > Date.now() + 5_000 && Math.abs(alarm.scheduledTime - planned) > 20_000) {
+      await schedule(planned - Date.now());
     }
   } catch {
     // app not running; the next boot tick tries again

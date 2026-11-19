@@ -20,7 +20,7 @@ test("enable needs a saved config, then flips the extension config on", () => {
   assert.equal(applyAction(p, { action: "enable" }).status, 400);
   assert.equal(applyAction(p, { action: "save-config", search_url: URL_OK, interval_minutes: 7 }).status, 200);
   assert.equal(applyAction(p, { action: "enable" }).status, 200);
-  assert.deepEqual(getExtensionConfig(p), { enabled: true, searchUrl: URL_OK, runNow: false, pages: 5 }); // no baseline yet: read deep
+  assert.deepEqual(getExtensionConfig(p), { enabled: true, searchUrl: URL_OK, runNow: false, pages: 5, nextPollAt: null }); // no baseline yet: read deep
   applyAction(p, { action: "disable" });
   assert.equal(getExtensionConfig(p).enabled, false);
 });
@@ -210,4 +210,34 @@ test("the extension is told to read deep for the first scan and Run now, and few
   assert.equal(JSON.parse(fs.readFileSync(p.statusFile, "utf8")).lastPages, 3);
   applyAction(p, { action: "run-now" });
   assert.equal(getExtensionConfig(p).pages, 7); // manual run reads deep again
+});
+
+test("changing the interval re-plans the next poll from the last poll, and tells the extension", () => {
+  const p = paths();
+  applyAction(p, { action: "save-config", search_url: URL_OK, interval_minutes: 5, jitter_percent: 0 });
+  applyAction(p, { action: "enable" });
+  const now = new Date(Date.UTC(2026, 10, 19, 12, 0, 0));
+  const lastPoll = new Date(now.getTime() - 2 * 60_000); // polled 2 minutes ago
+  const oldNext = new Date(lastPoll.getTime() + 5 * 60_000).toISOString();
+  const status = JSON.parse(fs.readFileSync(p.statusFile, "utf8"));
+  fs.writeFileSync(p.statusFile, JSON.stringify({ ...status, lastPollAt: lastPoll.toISOString(), nextPollAt: oldNext }));
+  const nextAt = () => JSON.parse(fs.readFileSync(p.statusFile, "utf8")).nextPollAt;
+  const deps = { now, random: () => 0.5 };
+
+  applyAction(p, { action: "save-config", search_url: URL_OK, interval_minutes: 5, jitter_percent: 0, active_hours: "" }, deps);
+  assert.equal(nextAt(), oldNext); // nothing about the timing changed: the plan stays put
+  applyAction(p, { action: "save-config", search_url: URL_OK, interval_minutes: 10, jitter_percent: 0 }, deps);
+  assert.equal(nextAt(), new Date(lastPoll.getTime() + 10 * 60_000).toISOString()); // 10 min after the last poll
+  assert.equal(getExtensionConfig(p).nextPollAt, nextAt());
+  applyAction(p, { action: "save-config", search_url: URL_OK, interval_minutes: 5, jitter_percent: 0 }, { now: new Date(lastPoll.getTime() + 20 * 60_000), random: () => 0.5 });
+  assert.equal(nextAt(), new Date(lastPoll.getTime() + 20 * 60_000 + 30_000).toISOString()); // already overdue: soon, never in the past
+});
+
+test("a stopped watcher has no next poll to follow", () => {
+  const p = paths();
+  applyAction(p, { action: "save-config", search_url: URL_OK, interval_minutes: 5 });
+  assert.equal(getExtensionConfig(p).nextPollAt, null);
+  applyAction(p, { action: "enable" });
+  applyAction(p, { action: "disable" });
+  assert.equal(getExtensionConfig(p).nextPollAt, null);
 });

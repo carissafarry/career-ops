@@ -139,3 +139,9 @@ test("page diagnostics are kept, trimmed to short strings", () => {
   assert.deepEqual([d.visibility, d.focused, d.cardsNow], ["hidden", false, 25]);
   assert.ok(!("extra" in d));
 });
+
+test("a poll skipped for active hours still records when the next one is planned", () => {
+  const night = parseWatchConfig({ search_url: cfg.searchUrl, active_hours: "08:00-09:00" });
+  const r = run({ cfg: night });
+  assert.equal(r.status.nextPollAt, new Date(NOW.getTime() + 15 * 60_000).toISOString());
+});

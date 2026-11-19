@@ -45,6 +45,7 @@ export function handleIngest({ payload, cfg, state, status, now, random, notify,
 
   // A manual "Run now" ignores active hours and the daily cap; the safety halts above still apply.
   if (!manual && (!withinActiveHours(cfg, now) || !pollsAllowed(cfg, status.pollTimes, now))) {
+    next = { ...next, nextPollAt: new Date(now.getTime() + IDLE_DELAY_MS).toISOString() };
     return { state, status: next, reply: reply(true, IDLE_DELAY_MS) };
   }
 

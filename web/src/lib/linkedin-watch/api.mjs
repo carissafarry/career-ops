@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import * as yaml from "js-yaml";
-import { parseWatchConfig, WatchConfigError } from "./config.mjs";
+import { nextDelayMs, parseWatchConfig, WatchConfigError } from "./config.mjs";
 import { handleIngest } from "./ingest.mjs";
 import { notifyMac } from "./notify.mjs";
 import { hasFilters } from "./config.mjs";
@@ -50,21 +50,40 @@ export function getExtensionConfig(paths) {
   // The first read (no baseline yet) and a manual "Run now" read deeper; scheduled polls read few pages.
   const deep = Boolean(status.runNowRequestedAt) || !readState(paths).baselineAt;
   const pages = cfg ? (deep ? cfg.deepPages : cfg.pagesPerPoll) : 1;
-  return { enabled, searchUrl: cfg?.searchUrl ?? null, runNow: enabled && Boolean(status.runNowRequestedAt), pages };
+  return { enabled, searchUrl: cfg?.searchUrl ?? null, runNow: enabled && Boolean(status.runNowRequestedAt), pages, nextPollAt: enabled ? status.nextPollAt ?? null : null };
 }
 
-export function applyAction(paths, body) {
+const SOON_MS = 30_000; // the shortest wait the extension schedules
+
+/**
+ * After the interval or the jitter changes, the poll already planned still has the old wait. Re-plan it from the
+ * last poll with the new settings (at least SOON_MS from now), so "Next poll" is right at once and the extension,
+ * which follows nextPollAt, moves its alarm.
+ */
+function replanNextPoll(paths, before, after, { now = new Date(), random = Math.random } = {}) {
+  if (!before || (before.intervalMinutes === after.intervalMinutes && before.jitterPercent === after.jitterPercent)) return;
+  const status = readStatus(paths);
+  if (status.state !== "running" || !status.nextPollAt) return;
+  const base = status.lastPollAt ? Date.parse(status.lastPollAt) : now.getTime();
+  const next = Math.max(base + nextDelayMs(after, random), now.getTime() + SOON_MS);
+  writeStatus(paths, { ...status, nextPollAt: new Date(next).toISOString() });
+}
+
+export function applyAction(paths, body, deps = {}) {
   const action = body?.action;
   if (action === "save-config") {
     const raw = Object.fromEntries(CONFIG_KEYS.filter((k) => body[k] !== undefined && body[k] !== "").map((k) => [k, body[k]]));
+    let parsed;
+    const before = loadConfig(paths);
     try {
-      parseWatchConfig(raw);
+      parsed = parseWatchConfig(raw);
     } catch (e) {
       if (e instanceof WatchConfigError) return { status: 400, body: { error: e.message } };
       throw e;
     }
     fs.mkdirSync(path.dirname(paths.configFile), { recursive: true });
     fs.writeFileSync(paths.configFile, yaml.dump(raw));
+    replanNextPoll(paths, before, parsed, deps);
     return { status: 200, body: { ok: true } };
   }
   if (action === "enable" || action === "resume" || action === "disable") {
