@@ -41,7 +41,7 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
     : [];
 
   return (
-    <PageFrame width="wide" className="space-y-8">
+    <PageFrame width="wide" className="space-y-8 sm:pb-24">
       <AutoRefresh seconds={10} />
       <div>
         <h1 className="font-display text-3xl text-landing">Scans</h1>
@@ -79,8 +79,9 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
           No scans match this filter yet.
         </p>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
-          <ul className="space-y-2.5" aria-label="Scan runs">
+        <div className="grid items-start gap-6 lg:grid-cols-[18rem_1fr]">
+          {/* The list scrolls on its own (and stays in view beside the results), so a long history does not stretch the whole page. */}
+          <ul className="max-h-72 space-y-2.5 overflow-y-auto pr-1 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)]" aria-label="Scan runs">
             {runs.map((run) => {
               const active = run.id === selected?.id;
               return (
@@ -123,7 +124,7 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
               <h2 className="text-xl font-bold tracking-[-0.01em] text-landing">{selectedOwner ? `${selectedOwner.name} · ${scanLabel(selected)}` : scanLabel(selected)}</h2>
               <p className="mt-1 text-sm text-muted">
                 {selected.id.startsWith("linkedin-")
-                  ? `One LinkedIn watcher poll: ${selected.found} jobs read from your saved search, ${selected.kept ?? 0} match your filters, ${selected.added} of them new (${Math.max((selected.kept ?? 0) - selected.added, 0)} already seen in an earlier poll). The first poll lists everything that matches.`
+                  ? `One LinkedIn watcher poll: ${selected.found} jobs read from your saved URLs, ${selected.kept ?? 0} match your filters, ${selected.added} of them new (${Math.max((selected.kept ?? 0) - selected.added, 0)} already seen in an earlier poll). The first poll lists everything that matches.`
                   : selected.kind === "full"
                   ? "Full ATS sweep across Greenhouse, Lever, Ashby, Workday and more."
                   : `${selected.found.toLocaleString("en-US")} checked, ${selected.filteredTitle.toLocaleString("en-US")} dropped by the title filter, ${selected.dupes.toLocaleString("en-US")} already seen.`}

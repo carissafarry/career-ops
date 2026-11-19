@@ -15,7 +15,7 @@ test("wide pages grow to 1800px and reading pages stay on the 1152px cap", () =>
   assert.match(frame, /wide:\s*"max-w-\[1800px\]"/);
   assert.match(frame, /px-4 py-6 sm:px-6 sm:py-8 max-sm:pb-24/);
   assert.match(pipeline, /<PageFrame width="wide">/);
-  assert.match(read("components/analytics-view.tsx"), /<PageFrame width="wide">/);
+  assert.match(read("components/analytics-view.tsx"), /<PageFrame width="wide"/);
   for (const rel of [
     "components/explore/explorer-view.tsx",
     "components/scheduled-jobs-view.tsx",

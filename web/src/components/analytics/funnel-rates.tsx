@@ -11,6 +11,18 @@ import { progressModel } from "@/lib/analytics/view-model.mjs";
 // Every number here is the core's. What this component decides is only whether
 // a number may be shown at all, and that decision lives in
 // lib/analytics/view-model.mjs where it is unit-tested.
+// The same card the other Analytics panels use (eyebrow, title, description), so this block no longer floats on the page.
+function Card({ description, children }: { description?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <section className="mt-10 rounded-2xl border border-border bg-surface p-4 shadow-card sm:p-5">
+      <p className="text-sm font-semibold text-brand-text">Outcomes</p>
+      <h2 className="mt-2 font-display text-xl tracking-tight text-landing">Conversion</h2>
+      {description && <p className="mt-1 max-w-xl text-xs leading-5 text-muted">{description}</p>}
+      {children}
+    </section>
+  );
+}
+
 export function FunnelRates() {
   const [state, setState] = useState<"loading" | "ready" | "unavailable">("loading");
   const [model, setModel] = useState<ReturnType<typeof progressModel> | null>(null);
@@ -33,8 +45,7 @@ export function FunnelRates() {
 
   if (state === "loading") {
     return (
-      <section className="mt-10">
-        <h2 className="font-display text-lg text-landing">Conversion</h2>
+      <Card>
         <div className="mt-4 grid gap-3" aria-hidden>
           {/* Inline rather than a shared Skeleton primitive: this branch is
               independent of the route-loading work, so it carries no dependency
@@ -47,7 +58,7 @@ export function FunnelRates() {
             />
           ))}
         </div>
-      </section>
+      </Card>
     );
   }
 
@@ -60,13 +71,12 @@ export function FunnelRates() {
 
   if (state === "unavailable") {
     return (
-      <section className="mt-10">
-        <h2 className="font-display text-lg text-landing">Conversion</h2>
-        <p className="mt-3 rounded-2xl border border-dashed border-border bg-surface/30 px-5 py-6 text-sm text-muted">
+      <Card>
+        <p className="mt-4 rounded-xl border border-dashed border-border px-5 py-6 text-sm text-muted">
           Nothing to convert yet — these rates come from applications you have
           sent. Apply to a role and the funnel fills in here.
         </p>
-      </section>
+      </Card>
     );
   }
 
@@ -74,38 +84,36 @@ export function FunnelRates() {
   const top = Math.max(1, ...stages.map((s) => s.value));
 
   return (
-    <section className="mt-10">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h2 className="font-display text-lg text-landing">Conversion</h2>
-        <p className="text-xs text-faint">
-          Cumulative — reaching a stage counts every stage before it, matching{" "}
-          <code className="text-muted">stats.mjs</code>
-        </p>
-      </div>
-
+    <Card
+      description={
+        <>
+          Cumulative: reaching a stage counts every stage before it, matching <code className="text-muted">stats.mjs</code>.
+        </>
+      }
+    >
       {model.provisional && (
         // stats.mjs's own smallSample flag. Said plainly, because three
         // percentages off a handful of applications look like a finding.
-        <p className="mt-2 text-xs text-muted">
-          Small sample so far — these rates will move a lot with each new outcome.
+        <p className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+          Small sample so far. These rates will move a lot with each new outcome.
         </p>
       )}
 
-      <div className="mt-4 grid gap-2.5">
+      <div className="mt-5 grid gap-3.5">
         {stages.map((s) => (
           <div key={s.key} className="flex items-center gap-3">
             <span className="w-24 shrink-0 text-sm text-muted">{s.label}</span>
-            <div className="h-4 flex-1 overflow-hidden rounded-full bg-surface">
-              <div className="h-full rounded-full bg-brand/70" style={{ width: `${(s.value / top) * 100}%` }} />
+            <div className="h-3 flex-1 overflow-hidden rounded-full bg-surface-hover">
+              <div className="h-full rounded-full bg-gradient-to-r from-brand-secondary to-brand-tertiary transition-[width] duration-500" style={{ width: `${(s.value / top) * 100}%` }} />
             </div>
-            <span className="w-8 shrink-0 text-right text-sm tabular-nums">{s.value}</span>
+            <span className="w-8 shrink-0 text-right text-sm tabular-nums text-foreground">{s.value}</span>
           </div>
         ))}
       </div>
 
-      <dl className="mt-5 grid grid-cols-3 gap-3">
+      <dl className="mt-6 grid grid-cols-3 gap-3 border-t border-border pt-5">
         {rates.map((r) => (
-          <div key={r.key} className="rounded-xl border border-border bg-surface shadow-card px-3.5 py-3">
+          <div key={r.key} className="rounded-xl border border-border bg-background px-3.5 py-3">
             <dt className="text-xs text-muted">{r.label}</dt>
             <dd className="mt-0.5 text-xl tabular-nums text-foreground">
               {/* null, not 0: a rate with nothing to divide by is absent. An
@@ -115,6 +123,6 @@ export function FunnelRates() {
           </div>
         ))}
       </dl>
-    </section>
+    </Card>
   );
 }
