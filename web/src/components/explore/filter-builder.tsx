@@ -1,6 +1,6 @@
 "use client";
 
-import { CountryTemplates } from "@/components/country-templates";
+import { CountryTemplates, RegionTemplates } from "@/components/country-templates";
 import { useState } from "react";
 import { X, Ban, Clock, MapPin, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -260,6 +260,11 @@ export function FilterBuilder({
           onChange={(v) => set({ allow: v })}
         />
       </div>
+
+      {!employer && <div>
+        <Label hint="click to include every country in it">Region</Label>
+        <RegionTemplates include={filters.allow} exclude={filters.block} onChange={(next) => set({ allow: next.include, block: next.exclude })} />
+      </div>}
 
       {!employer && <div>
         <Label hint="click once to include, twice to exclude">Countries</Label>

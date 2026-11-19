@@ -8,7 +8,7 @@
 // on the server; the browser only receives the finished strings.
 
 import cities from "all-the-cities";
-import { normalizeLocation } from "./location-facet.mjs";
+import { normalizeLocation, NO_COUNTRY } from "./location-facet.mjs";
 import { SPELLINGS, expandLocationTerms } from "./location-spellings.mjs";
 
 // Region and administrative words that follow a place name ("Yogyakarta Special Region").
@@ -120,6 +120,9 @@ export function locationKeys(location) {
   const raw = String(location ?? "");
   const text = normalizeLocation(raw);
   const extras = inferCountries(raw).map((country) => country.toLowerCase());
+  // A bare "Remote" names no country, so the region filter would drop it. The marker lets
+  // the "No country" button find those postings instead of losing them.
+  if (extras.length === 0) extras.push(NO_COUNTRY.toLowerCase());
   for (const [spelling, canonical] of SPELLINGS) {
     if (hasWord(text, canonical)) extras.push(spelling);
     if (hasWord(text, spelling)) extras.push(canonical);

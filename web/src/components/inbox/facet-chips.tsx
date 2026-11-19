@@ -4,7 +4,7 @@ import { Search, X } from "lucide-react";
 import { FRESHNESS_WINDOWS, PLATFORM_LABEL, SENIORITY_LABEL, type PlatformSource, type Seniority } from "@/lib/inbox";
 import { CostBadge } from "@/components/cost/cost-badge";
 import { cn } from "@/lib/cn";
-import { CountryTemplates } from "@/components/country-templates";
+import { CountryTemplates, RegionTemplates } from "@/components/country-templates";
 import { listOf, textOf } from "@/lib/location-countries.mjs";
 import { SourceExclusionMenu } from "@/components/inbox/source-exclusion-menu";
 import type { SourceScope } from "@/lib/source-exclusions";
@@ -117,6 +117,15 @@ export function FacetChips({
             ))}
           </Row>
         )}
+
+        <Row label="Region">
+          <RegionTemplates
+            noCountry
+            include={listOf(locQ)}
+            exclude={listOf(locNot)}
+            onChange={(next) => { setLocQ(textOf(next.include)); setLocNot(textOf(next.exclude)); }}
+          />
+        </Row>
 
         <Row label="Country">
           <CountryTemplates

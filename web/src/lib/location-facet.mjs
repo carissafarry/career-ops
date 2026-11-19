@@ -5,6 +5,9 @@
 // lowercase string, `locationKeys`. This file is the light, browser-safe half: it
 // normalizes text and matches a typed query against those keys.
 
+/** The words `locationKeys` adds to a posting whose country cannot be worked out. */
+export const NO_COUNTRY = "No country listed";
+
 /** Lowercase, strip accents, and keep letters and digits as space-separated words. */
 export function normalizeLocation(text) {
   return String(text ?? "")
