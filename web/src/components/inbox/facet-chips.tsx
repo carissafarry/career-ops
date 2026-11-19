@@ -1,9 +1,7 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import type { AtsSource } from "@/lib/explore";
-import { ATS_LABEL } from "@/lib/explore";
-import { FRESHNESS_WINDOWS, SENIORITY_LABEL, type Seniority } from "@/lib/inbox";
+import { FRESHNESS_WINDOWS, PLATFORM_LABEL, SENIORITY_LABEL, type PlatformSource, type Seniority } from "@/lib/inbox";
 import { CostBadge } from "@/components/cost/cost-badge";
 import { cn } from "@/lib/cn";
 import { CountryTemplates } from "@/components/country-templates";
@@ -38,8 +36,8 @@ export function FacetChips({
 }: {
   within: number | null;
   setWithin: (d: number | null) => void;
-  sources: Set<AtsSource>;
-  toggleSource: (s: AtsSource) => void;
+  sources: Set<PlatformSource>;
+  toggleSource: (s: PlatformSource) => void;
   seniorities: Set<Seniority>;
   toggleSeniority: (s: Seniority) => void;
   locQ: string;
@@ -49,7 +47,7 @@ export function FacetChips({
   setLocNot: (v: string) => void;
   kw: string;
   setKw: (v: string) => void;
-  availSources: AtsSource[];
+  availSources: PlatformSource[];
   availSeniorities: Seniority[];
   /** Every posting URL in the list, for the sites the exclusion menu offers. */
   allUrls: string[];
@@ -104,7 +102,7 @@ export function FacetChips({
           <Row label="Platform">
             {availSources.map((s) => (
               <Pill key={s} on={sources.has(s)} onClick={() => toggleSource(s)}>
-                {ATS_LABEL[s]}
+                {PLATFORM_LABEL[s]}
               </Pill>
             ))}
           </Row>

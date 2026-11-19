@@ -1,9 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { AtsSource } from "@/lib/explore";
-import { ATS_SOURCES } from "@/lib/explore";
-import { SENIORITY_ORDER, daysSince, seniorityFromTitle, sourceFromUrl, type Seniority } from "@/lib/inbox";
+import { PLATFORM_ORDER, SENIORITY_ORDER, daysSince, seniorityFromTitle, sourceFromUrl, type PlatformSource, type Seniority } from "@/lib/inbox";
 import { locationExcluded, locationMatchesAny } from "@/lib/location-facet.mjs";
 import { FacetChips } from "@/components/inbox/facet-chips";
 import { useSourceFilter } from "@/lib/source-exclusions";
@@ -29,7 +27,7 @@ const ROW_LIMIT = 200;
  */
 export function ScanResults({ postings }: { postings: ScanResultRow[] }) {
   const [within, setWithin] = useState<number | null>(null);
-  const [sources, setSources] = useState<Set<AtsSource>>(() => new Set());
+  const [sources, setSources] = useState<Set<PlatformSource>>(() => new Set());
   const [seniorities, setSeniorities] = useState<Set<Seniority>>(() => new Set());
   const [locQ, setLocQ] = useState("");
   const [locNot, setLocNot] = useState("");
@@ -49,9 +47,9 @@ export function ScanResults({ postings }: { postings: ScanResultRow[] }) {
   );
 
   const availSources = useMemo(() => {
-    const present = new Set<AtsSource>();
+    const present = new Set<PlatformSource>();
     for (const e of enriched) if (e.source) present.add(e.source);
-    return ATS_SOURCES.filter((s) => present.has(s));
+    return PLATFORM_ORDER.filter((s) => present.has(s));
   }, [enriched]);
   const availSeniorities = useMemo(() => {
     const present = new Set<Seniority>();

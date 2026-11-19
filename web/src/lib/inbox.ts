@@ -3,13 +3,19 @@
 // row for the facet chips. Fit order lives in core/inbox-rank.mjs, one rule
 // for the inbox and what's new. Do not add a second sort here.
 
-import type { AtsSource } from "@/lib/explore";
+import { ATS_LABEL, ATS_SOURCES, type AtsSource } from "@/lib/explore";
+
+/** Where a posting was found, for the Platform filter: every ATS and job board, plus LinkedIn. LinkedIn is read by the
+ *  LinkedIn watcher, not scanned from Explore, so it is deliberately not part of AtsSource (the sources Explore scans). */
+export type PlatformSource = AtsSource | "linkedin";
+export const PLATFORM_ORDER: PlatformSource[] = [...ATS_SOURCES, "linkedin"];
+export const PLATFORM_LABEL: Record<PlatformSource, string> = { ...ATS_LABEL, linkedin: "LinkedIn" };
 
 /** Which ATS a posting lives on, derived from its URL host (0 tokens, no network).
  *  Matches on the registrable domain anchored at a dot boundary (host === base OR
  *  host ends with ".base") — never a bare substring, so "greenhouse.io.evil.com"
  *  or "notlever.co" can't be misread as that ATS. */
-export function sourceFromUrl(url: string): AtsSource | null {
+export function sourceFromUrl(url: string): PlatformSource | null {
   let host = "";
   try {
     host = new URL(url).hostname.toLowerCase();
@@ -26,6 +32,7 @@ export function sourceFromUrl(url: string): AtsSource | null {
   if (domainIs("paylocity.com")) return "paylocity";
   if (domainIs("join.com")) return "join";
   if (domainIs("workable.com")) return "workable";
+  if (domainIs("linkedin.com")) return "linkedin";
   return null;
 }
 

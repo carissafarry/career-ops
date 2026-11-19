@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, ArrowUpDown, ChevronDown, Check, LayoutGrid, List } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { ATS_SOURCES, type AtsSource, type DiscoveredOffer } from "@/lib/explore";
-import { SENIORITY_ORDER, daysSince, seniorityFromTitle, sourceFromUrl, type Seniority } from "@/lib/inbox";
+import type { DiscoveredOffer } from "@/lib/explore";
+import { PLATFORM_ORDER, SENIORITY_ORDER, daysSince, seniorityFromTitle, sourceFromUrl, type PlatformSource, type Seniority } from "@/lib/inbox";
 import { locationExcluded, locationMatchesAny } from "@/lib/location-facet.mjs";
 import { FacetChips } from "@/components/inbox/facet-chips";
 import { RemovedBar } from "./removed-bar";
@@ -53,7 +53,7 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
   // Same facets as the Pipeline inbox: how recent, platform, level, location or country.
   // Roles already in the pipeline are hidden unless the user asks to include them.
   const [within, setWithin] = useState<number | null>(null);
-  const [sources, setSources] = useState<Set<AtsSource>>(() => new Set());
+  const [sources, setSources] = useState<Set<PlatformSource>>(() => new Set());
   const [seniorities, setSeniorities] = useState<Set<Seniority>>(() => new Set());
   const [locQ, setLocQ] = useState("");
   const [locNot, setLocNot] = useState("");
@@ -66,9 +66,9 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
   );
   const inPipelineCount = useMemo(() => offers.filter((o) => o.inPipeline).length, [offers]);
   const availSources = useMemo(() => {
-    const present = new Set<AtsSource>();
+    const present = new Set<PlatformSource>();
     for (const t of tagged) if (t.source) present.add(t.source);
-    return ATS_SOURCES.filter((s) => present.has(s));
+    return PLATFORM_ORDER.filter((s) => present.has(s));
   }, [tagged]);
   const availSeniorities = useMemo(() => {
     const present = new Set<Seniority>();
