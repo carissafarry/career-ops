@@ -137,7 +137,7 @@ export function TriageRow({
           <button
             type="button"
             onClick={onSave}
-            title={shortlisted ? "In your shortlist" : "Save to shortlist"}
+            title={shortlisted ? "In your shortlist — click to remove" : "Save to shortlist"}
             aria-pressed={shortlisted}
             className={cn(
               "inline-flex items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors max-sm:min-h-[44px] max-sm:min-w-[44px]",

@@ -262,6 +262,11 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
   };
   const skip = (job: InboxJob) => {
     setWriteError("");
+  // The row's Save button: a second click on "Saved" takes the role back out.
+  const toggleSave = (job: InboxJob) => {
+    if (isShortlisted(job.url)) setShortlist((s) => s.filter((x) => x.url !== job.url));
+    else save(job);
+  };
     setSelected((current) => selectionWithout(current, job.url));
     setHidden((h) => (h.includes(job.url) ? h : [...h, job.url]));
     const actions = createInboxSkipActions((done) => persistSkip(job.url, done), () => {
@@ -526,7 +531,7 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
               selected={selected.has(e.job.url)}
               shortlisted={isShortlisted(e.job.url)}
               onToggleSelect={() => toggleSelect(e.job.url)}
-              onSave={() => save(e.job)}
+              onSave={() => toggleSave(e.job)}
               onSkip={() => skip(e.job)}
             />
           ))}
