@@ -260,6 +260,11 @@ export function FilterBuilder({
         />
       </div>
 
+      {!employer && <div>
+        <Label hint="skip these places, e.g. all Indonesia except Jogja">Exclude locations</Label>
+        <KeywordField ariaLabel="Exclude locations" values={filters.block} tone="exc" placeholder="Jogja, Bali…" onChange={(v) => set({ block: v })} />
+      </div>}
+
       {!employer && <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
         <div className="min-w-[18rem]">
           <Label hint="postings published in this window">
@@ -310,15 +315,9 @@ export function FilterBuilder({
 
       {!employer && advanced && (
         <div className="space-y-3 rounded-xl border border-border bg-surface shadow-card p-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label hint="rescues a multi-location posting">Always include</Label>
-              <KeywordField ariaLabel="Always include" values={filters.alwaysAllow} tone="inc" placeholder="Toronto…" onChange={(v) => set({ alwaysAllow: v })} />
-            </div>
-            <div>
-              <Label hint="unless Always include also matches">Exclude locations</Label>
-              <KeywordField ariaLabel="Exclude locations" values={filters.block} tone="exc" placeholder="India…" onChange={(v) => set({ block: v })} />
-            </div>
+          <div>
+            <Label hint="rescues a multi-location posting">Always include</Label>
+            <KeywordField ariaLabel="Always include" values={filters.alwaysAllow} tone="inc" placeholder="Toronto…" onChange={(v) => set({ alwaysAllow: v })} />
           </div>
           <div>
             <Label hint="hard reject — overrides Always include">Never include</Label>

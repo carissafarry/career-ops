@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import type { AtsSource } from "@/lib/explore";
 import { ATS_SOURCES } from "@/lib/explore";
 import { SENIORITY_ORDER, daysSince, seniorityFromTitle, sourceFromUrl, type Seniority } from "@/lib/inbox";
-import { locationMatches } from "@/lib/location-facet.mjs";
+import { locationExcluded, locationMatches } from "@/lib/location-facet.mjs";
 import { FacetChips } from "@/components/inbox/facet-chips";
 import { useSourceFilter } from "@/lib/source-exclusions";
 
@@ -32,6 +32,7 @@ export function ScanResults({ postings }: { postings: ScanResultRow[] }) {
   const [sources, setSources] = useState<Set<AtsSource>>(() => new Set());
   const [seniorities, setSeniorities] = useState<Set<Seniority>>(() => new Set());
   const [locQ, setLocQ] = useState("");
+  const [locNot, setLocNot] = useState("");
   const [kw, setKw] = useState("");
   const [showAll, setShowAll] = useState(false);
   const now = useMemo(() => Date.now(), []);
@@ -67,13 +68,14 @@ export function ScanResults({ postings }: { postings: ScanResultRow[] }) {
         if (sources.size && (!e.source || !sources.has(e.source))) return false;
         if (seniorities.size && (!e.seniority || !seniorities.has(e.seniority))) return false;
         if (locQ.trim() && !locationMatches(e.posting.locationKeys || e.posting.location, locQ)) return false;
+        if (locationExcluded(e.posting.locationKeys || e.posting.location, locNot)) return false;
         if (kw.trim() && !`${e.posting.company} ${e.posting.role}`.toLowerCase().includes(kw.trim().toLowerCase())) return false;
         return true;
       }),
-    [enriched, isHidden, within, sources, seniorities, locQ, kw],
+    [enriched, isHidden, within, sources, seniorities, locQ, locNot, kw],
   );
 
-  const anyActive = within != null || sources.size > 0 || seniorities.size > 0 || locQ.trim() !== "" || kw.trim() !== "";
+  const anyActive = within != null || sources.size > 0 || seniorities.size > 0 || locQ.trim() !== "" || locNot.trim() !== "" || kw.trim() !== "";
   const shown = showAll ? filtered : filtered.slice(0, ROW_LIMIT);
   const hasPosted = postings.some((p) => p.postedAt);
 
@@ -89,6 +91,8 @@ export function ScanResults({ postings }: { postings: ScanResultRow[] }) {
         toggleSeniority={(s) => setSeniorities((set) => { const next = new Set(set); if (next.has(s)) next.delete(s); else next.add(s); return next; })}
         locQ={locQ}
         setLocQ={setLocQ}
+        locNot={locNot}
+        setLocNot={setLocNot}
         kw={kw}
         setKw={setKw}
         availSources={availSources}
@@ -97,7 +101,7 @@ export function ScanResults({ postings }: { postings: ScanResultRow[] }) {
         resultCount={filtered.length}
         totalCount={enriched.filter((e) => !isHidden(e.posting.url)).length}
         anyActive={anyActive}
-        onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setKw(""); }}
+        onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setLocNot(""); setKw(""); }}
       />
 
       {filtered.length === 0 ? (

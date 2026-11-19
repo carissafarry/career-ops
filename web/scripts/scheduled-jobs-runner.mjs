@@ -13,6 +13,7 @@ import {
 } from "../src/lib/scheduled-jobs-store.mjs";
 import { nextScheduledRun } from "../src/lib/scheduled-cadence.mjs";
 import { BOARD_ENTRIES, isBoardSource } from "../src/lib/board-sources.mjs";
+import { expandLocationTerms } from "../src/lib/location-spellings.mjs";
 import { isMainModule } from "../../lib/is-main-module.mjs";
 import { scheduledRunnerResourcePath, scheduledStorePath } from "../src/lib/scheduled-runner-path.mjs";
 import { getCareerOpsRoot } from "../../path-resolver.mjs";
@@ -208,10 +209,11 @@ function writeJobPortals(root, job, options = {}) {
   if (base.title_filter_full) base.title_filter_full = { ...base.title_filter_full, ...base.title_filter };
   base.location_filter = {
     ...(base.location_filter || {}),
-    allow: Array.isArray(filters.allow) ? filters.allow : [],
-    block: Array.isArray(filters.block) ? filters.block : [],
-    block_hard: Array.isArray(filters.blockHard) ? filters.blockHard : [],
-    always_allow: Array.isArray(filters.alwaysAllow) ? filters.alwaysAllow : [],
+    // Each place also goes in under its other spellings, so "Jogja" catches "Yogyakarta".
+    allow: expandLocationTerms(filters.allow),
+    block: expandLocationTerms(filters.block),
+    block_hard: expandLocationTerms(filters.blockHard),
+    always_allow: expandLocationTerms(filters.alwaysAllow),
   };
   // A job-board pass reads only the job's boards, not the companies in portals.yml.
   if (options.boards) {

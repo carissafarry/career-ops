@@ -17,7 +17,7 @@ import { FacetChips } from "./facet-chips";
 import { useSourceFilter } from "@/lib/source-exclusions";
 import type { ScanRunSummary } from "@/lib/scan-runs";
 import { scanLabel } from "@/lib/scan-runs-core.mjs";
-import { locationMatches } from "@/lib/location-facet.mjs";
+import { locationExcluded, locationMatches } from "@/lib/location-facet.mjs";
 import { TriageRow, type RowScore } from "./triage-row";
 import { ShortlistTray, type ShortItem } from "./shortlist-tray";
 import { cn } from "@/lib/cn";
@@ -53,6 +53,7 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
   const [sources, setSources] = useState<Set<AtsSource>>(() => new Set());
   const [seniorities, setSeniorities] = useState<Set<Seniority>>(() => new Set());
   const [locQ, setLocQ] = useState("");
+  const [locNot, setLocNot] = useState("");
   const [kw, setKw] = useState("");
   const [scanId, setScanId] = useState("");
   const [showAll, setShowAll] = useState(false);
@@ -197,10 +198,11 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
         if (seniorities.size && (!e.seniority || !seniorities.has(e.seniority))) return false;
         if (scanId && scans?.byUrl[e.job.url] !== scanId) return false;
         if (locQ.trim() && !locationMatches(e.job.locationKeys ?? e.job.location ?? "", locQ)) return false;
+        if (locationExcluded(e.job.locationKeys ?? e.job.location ?? "", locNot)) return false;
         if (kw.trim() && !`${e.job.company} ${e.job.role}`.toLowerCase().includes(kw.trim().toLowerCase())) return false;
         return true;
       }),
-    [enriched, hidden, isHidden, within, sources, seniorities, locQ, kw, scanId, scans],
+    [enriched, hidden, isHidden, within, sources, seniorities, locQ, locNot, kw, scanId, scans],
   );
 
   // Fit order lives in core/inbox-rank.mjs. This is the only sort.
@@ -210,7 +212,7 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
     fit: entry.job.fit ?? null,
   })), sortMode), [filtered, sortMode]);
 
-  const anyFacet = within != null || sources.size > 0 || seniorities.size > 0 || locQ.trim() !== "" || kw.trim() !== "" || scanId !== "";
+  const anyFacet = within != null || sources.size > 0 || seniorities.size > 0 || locQ.trim() !== "" || locNot.trim() !== "" || kw.trim() !== "" || scanId !== "";
   // Keep the batch cap with filters on too: filters sit under the list, so an
   // uncapped match set pushes what the filter did off screen.
   const capped = !showAll;
@@ -220,7 +222,7 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
 
   useEffect(() => {
     setShowAll(false);
-  }, [within, sources, seniorities, locQ, kw]);
+  }, [within, sources, seniorities, locQ, locNot, kw]);
   // Chip/facet changes only — scrolling on every locQ/kw keystroke pulls the
   // focused text input out of view while the user is still typing.
   useEffect(() => {
@@ -260,13 +262,13 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
     if (isShortlisted(job.url)) return;
     setShortlist((s) => [...s, { url: job.url, company: job.company, role: job.role }]);
   };
-  const skip = (job: InboxJob) => {
-    setWriteError("");
   // The row's Save button: a second click on "Saved" takes the role back out.
   const toggleSave = (job: InboxJob) => {
     if (isShortlisted(job.url)) setShortlist((s) => s.filter((x) => x.url !== job.url));
     else save(job);
   };
+  const skip = (job: InboxJob) => {
+    setWriteError("");
     setSelected((current) => selectionWithout(current, job.url));
     setHidden((h) => (h.includes(job.url) ? h : [...h, job.url]));
     const actions = createInboxSkipActions((done) => persistSkip(job.url, done), () => {
@@ -458,6 +460,8 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
         toggleSeniority={(s) => setSeniorities((set) => { const n = new Set(set); n.has(s) ? n.delete(s) : n.add(s); return n; })}
         locQ={locQ}
         setLocQ={setLocQ}
+        locNot={locNot}
+        setLocNot={setLocNot}
         kw={kw}
         setKw={setKw}
         availSources={availSources}
@@ -466,7 +470,7 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
         resultCount={filtered.length}
         totalCount={enriched.filter((e) => !hidden.includes(e.job.url) && !isHidden(e.job.url)).length}
         anyActive={anyFacet}
-        onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setKw(""); setScanId(""); }}
+        onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setLocNot(""); setKw(""); setScanId(""); }}
       />
       <p className="mt-3 text-xs text-faint">j and k move. s saves. x skips. Shift+X skips the checked rows.</p>
       </div>

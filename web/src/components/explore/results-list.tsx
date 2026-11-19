@@ -5,7 +5,7 @@ import { Plus, ArrowUpDown, ChevronDown, Check, LayoutGrid, List } from "lucide-
 import { cn } from "@/lib/cn";
 import { ATS_SOURCES, type AtsSource, type DiscoveredOffer } from "@/lib/explore";
 import { SENIORITY_ORDER, daysSince, seniorityFromTitle, sourceFromUrl, type Seniority } from "@/lib/inbox";
-import { locationMatches } from "@/lib/location-facet.mjs";
+import { locationExcluded, locationMatches } from "@/lib/location-facet.mjs";
 import { FacetChips } from "@/components/inbox/facet-chips";
 import { RemovedBar } from "./removed-bar";
 import { useSourceFilter } from "@/lib/source-exclusions";
@@ -56,6 +56,7 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
   const [sources, setSources] = useState<Set<AtsSource>>(() => new Set());
   const [seniorities, setSeniorities] = useState<Set<Seniority>>(() => new Set());
   const [locQ, setLocQ] = useState("");
+  const [locNot, setLocNot] = useState("");
   // Roles already in the pipeline are shown by default; the button hides them.
   const [includePipeline, setIncludePipeline] = useState(true);
   const now = useMemo(() => Date.now(), []);
@@ -87,12 +88,13 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
           if (sources.size && (!t.source || !sources.has(t.source))) return false;
           if (seniorities.size && (!t.seniority || !seniorities.has(t.seniority))) return false;
           if (locQ.trim() && !locationMatches(t.offer.locationKeys || t.offer.location || "", locQ)) return false;
+          if (locationExcluded(t.offer.locationKeys || t.offer.location || "", locNot)) return false;
           return true;
         })
         .map((t) => t.offer),
-    [tagged, isHidden, removed, includePipeline, within, sources, seniorities, locQ],
+    [tagged, isHidden, removed, includePipeline, within, sources, seniorities, locQ, locNot],
   );
-  const facetActive = within != null || sources.size > 0 || seniorities.size > 0 || locQ.trim() !== "";
+  const facetActive = within != null || sources.size > 0 || seniorities.size > 0 || locQ.trim() !== "" || locNot.trim() !== "";
 
   // Fit bands are free title-vs-profile estimates on scan offers only; the fit
   // controls stay out of the way when nothing in this result set carries one.
@@ -138,6 +140,8 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
         toggleSeniority={(s) => setSeniorities((set) => { const next = new Set(set); if (next.has(s)) next.delete(s); else next.add(s); return next; })}
         locQ={locQ}
         setLocQ={setLocQ}
+        locNot={locNot}
+        setLocNot={setLocNot}
         kw={q}
         setKw={setQ}
         availSources={availSources}
@@ -146,7 +150,7 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
         resultCount={view.length}
         totalCount={tagged.filter((t) => !isHidden(t.offer.url) && !removed.has(t.offer.url) && (includePipeline || !t.offer.inPipeline)).length}
         anyActive={facetActive || q.trim() !== ""}
-        onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setQ(""); }}
+        onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setLocNot(""); setQ(""); }}
       />
 
       <div className="flex flex-wrap items-center gap-3">

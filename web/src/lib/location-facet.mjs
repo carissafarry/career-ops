@@ -30,3 +30,14 @@ export function locationMatches(keys, query) {
   if (!q) return true;
   return ` ${normalizeLocation(keys)}`.includes(` ${q}`);
 }
+
+/**
+ * True when any place in the comma-separated `query` starts a word in the keys.
+ * Used by the "Exclude location" box: "Jogja, Bali" hides postings in either.
+ * An empty query excludes nothing.
+ */
+export function locationExcluded(keys, query) {
+  return String(query ?? "")
+    .split(",")
+    .some((part) => normalizeLocation(part) !== "" && locationMatches(keys, part));
+}

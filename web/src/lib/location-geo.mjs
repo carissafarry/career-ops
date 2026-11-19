@@ -9,18 +9,7 @@
 
 import cities from "all-the-cities";
 import { normalizeLocation } from "./location-facet.mjs";
-
-// Names people write that are not the dataset's spelling. Local-language names of
-// big cities, plus short forms of regions.
-const SPELLINGS = [
-  ["jogja", "yogyakarta"], ["jogjakarta", "yogyakarta"], ["diy", "yogyakarta"],
-  ["dki", "jakarta"], ["jabar", "west java"], ["jateng", "central java"], ["jatim", "east java"],
-  ["warszawa", "warsaw"], ["lisboa", "lisbon"], ["koeln", "cologne"], ["muenchen", "munich"],
-  ["wien", "vienna"], ["praha", "prague"], ["roma", "rome"], ["milano", "milan"], ["torino", "turin"],
-  ["napoli", "naples"], ["firenze", "florence"], ["beograd", "belgrade"], ["bruxelles", "brussels"],
-  ["kobenhavn", "copenhagen"], ["goteborg", "gothenburg"], ["sevilla", "seville"], ["zuerich", "zurich"],
-  ["den haag", "the hague"], ["saigon", "ho chi minh city"], ["bombay", "mumbai"],
-];
+import { SPELLINGS } from "./location-spellings.mjs";
 
 // Region and administrative words that follow a place name ("Yogyakarta Special Region").
 const TAIL_WORDS = new Set(["special", "region", "province", "state", "county", "district", "regency", "prefecture", "governorate", "metropolitan", "area", "city", "capital", "territory"]);

@@ -8,6 +8,8 @@
 // scanner reads — the bug block_hard hit (#3102): a tier the type carried but
 // the serializer never emitted is a filter the user set and the scan ignored.
 
+import { expandLocationTerms } from "../location-spellings.mjs";
+
 /** One YAML list block, or "" when empty. Scalars go through JSON.stringify (a
  *  valid YAML double-quoted scalar) so arbitrary keywords — colons, quotes,
  *  leading dashes — can never break the document or inject YAML. */
@@ -37,10 +39,11 @@ export function serializePortals(f) {
   }
   if (f.blockHard.length || f.allow.length || f.block.length || f.alwaysAllow.length) {
     out += "location_filter:\n";
-    out += block("block_hard", f.blockHard);
-    out += block("always_allow", f.alwaysAllow);
-    out += block("allow", f.allow);
-    out += block("block", f.block);
+    // Each place also goes in under its other spellings, so "Jogja" catches "Yogyakarta".
+    out += block("block_hard", expandLocationTerms(f.blockHard));
+    out += block("always_allow", expandLocationTerms(f.alwaysAllow));
+    out += block("allow", expandLocationTerms(f.allow));
+    out += block("block", expandLocationTerms(f.block));
   }
   return out;
 }
