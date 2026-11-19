@@ -6,6 +6,7 @@ import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { pageFrameWidthClass } from "@/components/page-frame";
 import { normalizeTextKey } from "@/lib/core/normalize-text-key.mjs";
+import { matchEvaluatedPosting } from "@/lib/evaluated-posting.mjs";
 import { paramsToFilters, paramsToAi, type ExploreFilters } from "@/lib/explore";
 import { CHINA_PRESET } from "@/lib/employer-preset.mjs";
 import { shouldStartScanOnLoad } from "@/lib/scan-on-load.mjs";
@@ -38,7 +39,7 @@ export function ExplorerView({
 }: {
   seed: { filters: ExploreFilters; seededFrom: string[] };
   inboxUrls: string[];
-  evaluated: { n: string; company: string; role: string }[];
+  evaluated: { n: string; company: string; role: string; url?: string }[];
   rootExists: boolean;
 }) {
   const { filters, setFilters, initFilters, phase, running, offers, discover, loadFresh, status, employerOutcome, error, scannerMissing, mode, setMode, aiIntent, setAiIntent, discoverAI, companiesScanned, companiesAvailable, capHit, droppedNoDate, partial, removed } = useExplore();
@@ -93,13 +94,7 @@ export function ExplorerView({
     const trackedUrls = new Set(inboxUrls);
     return offers.map((o) => {
       const inPipeline = trackedUrls.has(o.url) && !removed.has(o.url);
-      const c = norm(o.company);
-      const t = norm(o.title);
-      const ev = evaluated.find((a) => {
-        if (norm(a.company) !== c) return false;
-        const ar = norm(a.role);
-        return ar.length > 3 && (t.includes(ar) || ar.includes(t.split(" ").slice(0, 3).join(" ")));
-      });
+      const ev = matchEvaluatedPosting(evaluated, o, norm);
       return { ...o, inPipeline, evaluatedN: ev?.n };
     });
   }, [offers, inboxUrls, evaluated, removed]);
