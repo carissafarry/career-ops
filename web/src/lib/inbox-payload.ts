@@ -4,6 +4,9 @@ import { applyInboxFit, loadFitTargets } from "@/lib/inbox-fit-profile.mjs";
 import { pendingInbox } from "@/lib/inbox-pending.mjs";
 import { readScanRuns, scanSelectorData } from "@/lib/scan-runs";
 import { locationKeys } from "@/lib/location-geo.mjs";
+import path from "node:path";
+import { careerOpsRoot } from "@/lib/career-ops";
+import { readPosted, withPostedExact } from "@/lib/linkedin-watch/posted-log.mjs";
 
 export type InboxPayload = {
   jobs: InboxJob[];
@@ -31,5 +34,7 @@ export function loadInboxPayload(inbox: InboxJob[]): InboxPayload {
       }, targets),
     }),
   );
-  return { jobs: fitted.jobs, error: fitted.error, scans: scanSelectorData(readScanRuns(), pending.map((job) => job.url)) };
+  // Jobs added from the LinkedIn watcher keep the hour LinkedIn gave them (the pipeline file itself stores a date only).
+  const posted = readPosted(path.join(careerOpsRoot(), "data", "linkedin-posted.tsv"));
+  return { jobs: withPostedExact(fitted.jobs, posted), error: fitted.error, scans: scanSelectorData(readScanRuns(), pending.map((job) => job.url)) };
 }

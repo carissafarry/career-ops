@@ -1,5 +1,6 @@
 "use client";
 
+import { useMinuteClock } from "@/components/live-age";
 import { useMemo, useState } from "react";
 import { ExternalLink, Plus, Check, Loader2, ShieldQuestion, Sparkles, Coins, CirclePause, X } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -72,6 +73,7 @@ export function DiscoveryCard({
   const isAdding = adding.has(offer.url);
   const unverified = offer.verification === "unconfirmed";
   const employer = CHINA_SOURCES.includes(offer.source);
+  useMinuteClock(); // re-renders each minute, so "today" turns into "1d ago" without a refresh
   const fresh = freshness(offer.postedAt) || offer.postedHint || "";
 
   const toggleInPipeline = async () => {

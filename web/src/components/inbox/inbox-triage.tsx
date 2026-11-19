@@ -17,6 +17,7 @@ import type { ScanRunSummary } from "@/lib/scan-runs";
 import { scanLabel } from "@/lib/scan-runs-core.mjs";
 import { locationExcluded, locationMatchesAny } from "@/lib/location-facet.mjs";
 import { TriageRow, type RowScore } from "./triage-row";
+import { ApplyNoteDialog } from "./apply-note-dialog";
 import { ShortlistTray, type ShortItem } from "./shortlist-tray";
 import { cn } from "@/lib/cn";
 import { estimateRunCost } from "@/lib/run-cost-estimate.mjs";
@@ -284,6 +285,34 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
     setUndo(notice);
     void actions.skip();
   };
+  // "Applied" straight from the Pipeline: the job becomes an Applied tracker row and leaves the inbox, with no shortlist or scoring first.
+  // The dialog asks for an optional note, written to the row's Notes cell.
+  const [applying, setApplying] = useState(false);
+  const [applyDraft, setApplyDraft] = useState<InboxJob[] | null>(null);
+  const markApplied = (jobs: InboxJob[]) => {
+    if (jobs.length === 0 || applying) return;
+    setApplyDraft(jobs);
+  };
+  const submitApplied = async (jobs: InboxJob[], note: string) => {
+    setWriteError("");
+    setApplying(true);
+    try {
+      const res = await fetch("/api/pipeline/inbox/applied", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ urls: jobs.map((j) => j.url), note }) });
+      const json = await res.json().catch(() => ({}));
+      const done: string[] = Array.isArray(json.applied) ? json.applied : [];
+      setSelected((current) => done.reduce((acc, url) => selectionWithout(acc, url), current));
+      const failed: { company?: string; error: string }[] = Array.isArray(json.failed) ? json.failed : [];
+      if (failed.length > 0) setWriteError(`Could not mark ${failed.map((f) => f.company ?? "a job").join(", ")} as applied: ${failed[0].error}`);
+      else if (!res.ok) setWriteError(json.error ?? "Could not mark it as applied.");
+      setApplyDraft(null);
+      router.refresh();
+    } catch {
+      setWriteError("Could not reach the app. Nothing was marked as applied.");
+      setApplyDraft(null);
+    } finally {
+      setApplying(false);
+    }
+  };
   const restoreHidden = async () => {
     if (restoreRunning.current) return;
     restoreRunning.current = true;
@@ -502,12 +531,25 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
         </div>
       </div>
 
+      {applyDraft && (
+        <ApplyNoteDialog
+          what={applyDraft.length === 1 ? `${applyDraft[0].company} · ${applyDraft[0].role}` : `${applyDraft.length} jobs`}
+          count={applyDraft.length}
+          busy={applying}
+          onConfirm={(note) => void submitApplied(applyDraft, note)}
+          onCancel={() => setApplyDraft(null)}
+        />
+      )}
+
       {/* multi-select action bar */}
       {selected.size > 0 && (
         <div className="mt-2 flex items-center gap-3 rounded-lg border border-brand/30 bg-brand-soft px-3 py-2 text-sm">
           <span className="font-medium text-brand-text tabular-nums">{selected.size} selected</span>
           <button type="button" onClick={saveSelected} className="rounded-md bg-brand px-2.5 py-1 text-xs font-medium text-brand-foreground max-sm:min-h-[44px]">
             Save to shortlist
+          </button>
+          <button type="button" disabled={applying} onClick={() => markApplied(enriched.filter((e) => selected.has(e.job.url)).map((e) => e.job))} className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:border-brand/40 disabled:opacity-50 max-sm:min-h-[44px]">
+            Mark applied
           </button>
           <button type="button" onClick={skipSelected} className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:border-brand/40 max-sm:min-h-[44px]">
             Skip selected
@@ -527,13 +569,13 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
               cursor={cursor === index}
               job={e.job}
               source={e.source}
-              age={e.age}
               reason={e.fit?.reason ?? ""}
               scored={scoreByUrl.get(e.job.url)}
               selected={selected.has(e.job.url)}
               shortlisted={isShortlisted(e.job.url)}
               onToggleSelect={() => toggleSelect(e.job.url)}
               onSave={() => toggleSave(e.job)}
+              onApplied={() => markApplied([e.job])}
               onSkip={() => skip(e.job)}
             />
           ))}

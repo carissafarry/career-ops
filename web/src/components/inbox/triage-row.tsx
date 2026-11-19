@@ -1,25 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { Bookmark, BookmarkCheck, Loader2, X, CirclePause } from "lucide-react";
+import { Bookmark, BookmarkCheck, CircleCheck, Loader2, X, CirclePause } from "lucide-react";
 import type { InboxJob } from "@/lib/career-ops";
 import { PLATFORM_LABEL, type PlatformSource } from "@/lib/inbox";
 import { unscoredInboxHref } from "@/lib/posting-url.mjs";
 import { Badge } from "@/components/ui/badge";
 import { CompanyLogo } from "@/components/company-logo";
 import { cn } from "@/lib/cn";
+import { AgeLabel } from "@/components/live-age";
 import { inboxScoreTarget } from "@/lib/inbox-score-target.mjs";
 
 export type RowScore = { score: number | null; tone: "good" | "warn" | "bad" | "muted"; jobId: string; running: boolean; reportN?: number | null; needsReview?: boolean };
-
-function agoLabel(age: number | null): string | null {
-  if (age == null) return null;
-  if (age <= 0) return "today";
-  if (age === 1) return "yesterday";
-  if (age < 7) return `${age}d ago`;
-  if (age < 30) return `${Math.floor(age / 7)}w ago`;
-  return `${Math.floor(age / 30)}mo ago`;
-}
 
 // One raw posting in the triage list. Shows ONLY cheap, free signals + an honest
 // "not scored" (CRUDA) — never a fake match%. Once its shortlist eval finishes it
@@ -29,29 +21,28 @@ export function TriageRow({
   cursor,
   job,
   source,
-  age,
   reason,
   scored,
   selected,
   shortlisted,
   onToggleSelect,
   onSave,
+  onApplied,
   onSkip,
 }: {
   index: number;
   cursor: boolean;
   job: InboxJob;
   source: PlatformSource | null;
-  age: number | null;
   reason?: string;
   scored?: RowScore;
   selected: boolean;
   shortlisted: boolean;
   onToggleSelect: () => void;
   onSave: () => void;
+  onApplied: () => void;
   onSkip: () => void;
 }) {
-  const ago = agoLabel(age);
   const target = inboxScoreTarget(scored);
   const evaluated = target.evaluated;
   const postingHref = unscoredInboxHref(job.url, evaluated);
@@ -96,7 +87,7 @@ export function TriageRow({
         <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-faint">
           {job.location && <span className="truncate">{job.location}</span>}
           {source && <span className="rounded bg-surface-hover px-1 py-px font-medium text-muted">{PLATFORM_LABEL[source]}</span>}
-          {ago && <span>{ago}</span>}
+          <AgeLabel postedDate={job.postedAt} exact={job.postedAtExact} />
           {reason ? <span className="text-muted">{reason}</span> : null}
           {!evaluated && <span className="italic text-muted">not scored</span>}
         </p>
@@ -145,6 +136,16 @@ export function TriageRow({
           >
             {shortlisted ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
             <span className="max-sm:hidden">{shortlisted ? "Saved" : "Save"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={onApplied}
+            title="Already applied: add it to your tracker as Applied, no scoring needed"
+            aria-label={`Mark ${job.company} ${job.role} as applied`}
+            className="inline-flex items-center justify-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-surface-hover hover:text-brand-text max-sm:min-h-[44px] max-sm:min-w-[44px]"
+          >
+            <CircleCheck className="size-4" />
+            <span className="max-sm:hidden">Applied</span>
           </button>
           <button
             type="button"
