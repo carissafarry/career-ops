@@ -27,6 +27,9 @@ export function proxy(req: NextRequest) {
     host: req.headers.get("host"),
     allowedHosts: parseAllowedHosts(process.env.CAREER_OPS_WEB_ALLOWED_HOSTS),
     allowedOrigins: parseAllowedOrigins(process.env.CAREER_OPS_ALLOWED_ORIGINS),
+    referer: req.headers.get("referer"),
+    secFetchMode: req.headers.get("sec-fetch-mode"),
+    secFetchDest: req.headers.get("sec-fetch-dest"),
   });
   if (!decision.ok) {
     return NextResponse.json({ error: decision.reason }, { status: decision.status });

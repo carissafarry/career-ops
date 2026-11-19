@@ -344,3 +344,21 @@ test("the guard still works with no allowedOrigins passed at all", () => {
   });
   assert.equal(d.ok, true);
 });
+
+// The in-page redirect from 127.0.0.1 to localhost is a cross-site navigation to the browser.
+test("a document navigation from the loopback IP on the same port to localhost is allowed", () => {
+  const base = { secFetchSite: "cross-site", origin: null, host: "localhost:3000", allowedHosts: new Set(), secFetchMode: "navigate", secFetchDest: "document" };
+  assert.equal(checkRequest({ ...base, referer: "http://127.0.0.1:3000/explore" }).ok, true);
+});
+
+test("that exception is narrow", () => {
+  const base = { secFetchSite: "cross-site", origin: null, host: "localhost:3000", allowedHosts: new Set(), secFetchMode: "navigate", secFetchDest: "document" };
+  // another port, another site, no referrer, or not a page navigation: still refused
+  assert.equal(checkRequest({ ...base, referer: "http://127.0.0.1:4000/" }).ok, false);
+  assert.equal(checkRequest({ ...base, referer: "https://evil.test/" }).ok, false);
+  assert.equal(checkRequest({ ...base, referer: null }).ok, false);
+  assert.equal(checkRequest({ ...base, referer: "http://127.0.0.1:3000/", secFetchMode: "cors" }).ok, false);
+  assert.equal(checkRequest({ ...base, referer: "http://127.0.0.1:3000/", secFetchDest: "empty" }).ok, false);
+  // and only into localhost, never into another host
+  assert.equal(checkRequest({ ...base, host: "127.0.0.1:3000", referer: "http://127.0.0.1:3000/" }).ok, false);
+});

@@ -22,7 +22,8 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isMainModule } from "../lib/is-main-module.mjs";
 
-const DEFAULT_URL = "http://127.0.0.1:3000/pipeline";
+// localhost, not 127.0.0.1: the browser keeps saved filters and settings per address.
+const DEFAULT_URL = "http://localhost:3000/pipeline";
 const TITLE = "career-ops";
 
 /** One line of safe text: no control characters, quotes or backticks, collapsed spaces, capped. */

@@ -150,7 +150,7 @@ async function main() {
   const pending = (read(data("pipeline.md")).match(/^- \[ \] /gm) ?? []).length;
   line("✓", `${pending} lowongan menunggu di pipeline`);
   const up = await portOpen(3000);
-  line(up ? "✓" : "⚠", up ? "Dashboard menyala di http://127.0.0.1:3000" : "Dashboard mati (jalankan: npm run ui)");
+  line(up ? "✓" : "⚠", up ? "Dashboard menyala di http://localhost:3000" : "Dashboard mati (jalankan: npm run ui)");
 
   console.log(out.join("\n"));
 }

@@ -143,9 +143,12 @@ const rawUrlHost = isWildcardAddress(bindHost) ? "localhost" : bindHost;
 const urlHost = rawUrlHost.includes(":") && !rawUrlHost.startsWith("[") ? `[${rawUrlHost}]` : rawUrlHost;
 
 const url = `http://${urlHost}:${port}`;
+// What people see and open: localhost, not the loopback IP. A browser keeps saved filters and
+// other settings per address, so opening 127.0.0.1 here would split them from localhost.
+const openUrl = urlHost === "127.0.0.1" ? `http://localhost:${port}` : url;
 
 console.log("\n\x1b[1mStarting Career-ops Web Server...\x1b[0m");
-console.log(`\x1b[32mWeb UI:\x1b[0m \x1b[4m\x1b[34m${url}\x1b[0m\n`);
+console.log(`\x1b[32mWeb UI:\x1b[0m \x1b[4m\x1b[34m${openUrl}\x1b[0m\n`);
 console.log("Press \x1b[1mCtrl+C\x1b[0m to stop.\n");
 
 // Function to open browser
@@ -179,7 +182,7 @@ function pollReady() {
     res.resume();
     if (res.statusCode && res.statusCode < 500 && !opened && polling) {
       opened = true;
-      openBrowser(url);
+      openBrowser(openUrl);
     } else if (polling && !opened) {
       setTimeout(pollReady, 500);
     }
