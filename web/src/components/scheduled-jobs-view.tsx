@@ -396,6 +396,7 @@ export function ScheduledJobsView() {
               onDelete={handleDelete}
               onRunFinished={loadData}
               scanRunning={scanRunning}
+              runningHere={store.runs.some((r) => r.state === "running" && r.jobId === job.id)}
             />
           ))}
         </div>

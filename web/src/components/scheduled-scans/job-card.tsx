@@ -17,6 +17,7 @@ export function JobCard({
   onDelete,
   onRunFinished,
   scanRunning = false,
+  runningHere = false,
 }: {
   job: ScheduledJob;
   onToggleStatus: (id: string, currentStatus: string) => void;
@@ -26,6 +27,8 @@ export function JobCard({
   onRunFinished: () => void;
   /** Another scan holds the runner right now, so Run now would only fail. */
   scanRunning?: boolean;
+  /** This job is the one holding the runner, so only its card shows the spinner. */
+  runningHere?: boolean;
 }) {
   const router = useRouter();
   const [running, setRunning] = useState(false);
@@ -277,11 +280,11 @@ export function JobCard({
           type="button"
           onClick={handleRunNow}
           disabled={running || scanRunning}
-          title={scanRunning && !running ? "Another scan is running. Run now works again when it finishes." : undefined}
+          title={scanRunning && !running && !runningHere ? "Another scan is running. Run now works again when it finishes." : undefined}
           className="inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-brand/30 px-2.5 py-2 text-xs font-medium text-brand-text transition-colors hover:bg-brand-soft disabled:opacity-50 max-sm:min-h-[44px]"
         >
-          {running || scanRunning ? <Loader2 className="size-3.5 animate-spin" /> : <Zap className="size-3.5" />}
-          {running ? "Scanning…" : scanRunning ? "Scan running…" : "Run now"}
+          {running || runningHere ? <Loader2 className="size-3.5 animate-spin" /> : <Zap className="size-3.5" />}
+          {running || runningHere ? "Scanning…" : "Run now"}
         </button>
 
         <button
