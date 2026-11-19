@@ -1,4 +1,5 @@
-import { readApplications, readApplicationStatusLog, readStatusLog, type Application } from "@/lib/career-ops";
+import { readApplications, readApplicationStatusLog, readInbox, readStatusLog, type Application } from "@/lib/career-ops";
+import { skippedSummary } from "@/lib/skipped-inbox.mjs";
 import { PipelineSankey } from "@/components/analytics/pipeline-sankey";
 import { canonStatus } from "@/lib/format";
 import { cumulativeProgressWithHistory } from "@/lib/funnel-tiles.mjs";
@@ -33,7 +34,7 @@ async function ProgressView({ applications }: { applications: Application[] }) {
   );
   return (
     <>
-      <ProgressPanel metrics={computeProgressMetrics(applications, achievements)} />
+      <ProgressPanel metrics={computeProgressMetrics(applications, achievements)} skipped={skippedSummary(readInbox(applications), applications)} />
       <PipelineSankey applications={applications} statusLog={readStatusLog()} />
       <FunnelRates />
     </>

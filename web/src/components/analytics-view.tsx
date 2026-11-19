@@ -82,7 +82,15 @@ function AnalyticsTab({ href, active, icon, children }: { href: string; active: 
   );
 }
 
-export function ProgressPanel({ metrics }: { metrics: ProgressMetrics }) {
+type SkippedSummary = {
+  total: number;
+  reviewed: number;
+  share: number | null;
+  bySource: { label: string; count: number; pct: number }[];
+  byCompany: { label: string; count: number; pct: number }[];
+};
+
+export function ProgressPanel({ metrics, skipped }: { metrics: ProgressMetrics; skipped?: SkippedSummary }) {
   const maxWeeklyActivity = Math.max(1, ...metrics.weeklyActivity.map((row) => row.count));
   return (
     <div className="mt-6 space-y-5">
@@ -114,6 +122,37 @@ export function ProgressPanel({ metrics }: { metrics: ProgressMetrics }) {
           </div>
         </Panel>
       </div>
+
+      {skipped ? (
+        <Panel
+          eyebrow="Inbox review"
+          title="Skipped postings"
+          description="Postings you skipped from the pipeline inbox. Counted apart from the tracker, so the funnel above does not change."
+        >
+          {skipped.total ? (
+            <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,0.6fr)_minmax(0,1fr)_minmax(0,1fr)]">
+              <div>
+                <div className="font-display text-4xl tracking-tight text-landing tabular-nums">{skipped.total}</div>
+                <p className="mt-1 text-xs text-muted">
+                  {skipped.share === null ? null : <><span className="tabular-nums text-foreground">{Math.round(skipped.share)}%</span> of the {skipped.reviewed} postings you reviewed (skipped + tracked)</>}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-muted">By source</p>
+                <div className="mt-3 space-y-3">
+                  {skipped.bySource.map((row) => <BarRow key={row.label} label={row.label} count={row.count} pct={row.pct} widthPct={row.pct} tone="bg-orange-300" />)}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-muted">By company</p>
+                <div className="mt-3 space-y-3">
+                  {skipped.byCompany.map((row) => <BarRow key={row.label} label={row.label} count={row.count} pct={row.pct} widthPct={row.pct} tone="bg-pink-400" />)}
+                </div>
+              </div>
+            </div>
+          ) : <EmptyData label="Nothing skipped yet" detail="Postings you skip from the pipeline inbox will show up here." />}
+        </Panel>
+      ) : null}
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Panel eyebrow="Fit quality" title="Score distribution" description="Only scored evaluations are included.">
