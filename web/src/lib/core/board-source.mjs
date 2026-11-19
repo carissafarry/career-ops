@@ -22,6 +22,8 @@ export async function scanBoard(id, request, { provider, core, http, now = Date.
   const entry = BOARD_ENTRIES[id];
   const titleMatches = core.buildTitleFilter(request.titleFilter ?? {});
   const locationMatches = core.buildLocationFilter(request.locationFilter ?? {});
+  // data/blacklist.md, the same do-not-apply list the scanner reads (absent = no filtering).
+  const blacklist = core.loadBlacklist?.() ?? new Map();
   const sinceDays = Math.max(1, Number(request.sinceDays) || 7);
   const terms = entry.search ? [...new Set((request.terms ?? []).filter((t) => typeof t === "string" && t.trim()))].slice(0, MAX_TERMS) : [];
   // A board that takes a search phrase gets one query per term (none = the whole board).
@@ -74,6 +76,7 @@ export async function scanBoard(id, request, { provider, core, http, now = Date.
         continue;
       }
       const company = typeof job.company === "string" && job.company.trim() ? job.company.trim() : entry.name;
+      if (core.findBlacklistEntry?.(blacklist, company, job.url)) continue;
       if (!titleMatches(job.title)) continue;
       if (!locationMatches(job.location, job.url, job.title)) continue;
       const posted = job.postedAt == null ? null : new Date(job.postedAt);

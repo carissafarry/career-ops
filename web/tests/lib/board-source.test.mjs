@@ -50,6 +50,22 @@ test("no terms searches the whole searchable board once", async () => {
   assert.deepEqual(seen, [""]);
 });
 
+test("a company on the do-not-apply list is left out", async () => {
+  const blocked = {
+    ...core,
+    loadBlacklist: () => new Map([["blockedco", { company: "Blocked Co" }]]),
+    findBlacklistEntry: (list, company) => (company === "Blocked Co" ? list.get("blockedco") : null),
+  };
+  const provider = {
+    fetch: async () => [
+      job({ company: "Blocked Co", url: "https://x.test/blocked" }),
+      job({ company: "Acme", url: "https://x.test/acme" }),
+    ],
+  };
+  const result = await scanBoard("jobstreet", { terms: ["Management Trainee"], sinceDays: 7 }, { provider, core: blocked, http: {}, now: NOW });
+  assert.deepEqual(result.offers.map((o) => o.company), ["Acme"]);
+});
+
 test("terms are capped", async () => {
   const seen = [];
   const provider = { fetch: async (entry) => (seen.push(entry.searchKeywords), []) };
