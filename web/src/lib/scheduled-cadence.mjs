@@ -61,3 +61,21 @@ export function nextScheduledRun(startAt, every, unit, nowMs = Date.now(), timez
   const steps = Math.floor((nowMs - first) / interval) + 1;
   return new Date(first + steps * interval).toISOString();
 }
+
+/**
+ * When a job runs next after the user edits it. Saving an edit must never make
+ * the job due right now: a start time still in the future is honoured as the
+ * first run, and anything else (a past start, a new cadence, or a next run that
+ * had already slipped into the past) moves to the next slot after now.
+ *
+ * @param {{ startAt: string, every: number, unit: string, timezone?: string, nextRunAt?: string|null }} job the job as saved
+ * @param {{ startChanged: boolean, cadenceChanged: boolean }} changed
+ * @param {number} [nowMs]
+ * @returns {string|null} the new nextRunAt, or null to keep the current one
+ */
+export function nextRunAfterEdit(job, { startChanged, cadenceChanged }, nowMs = Date.now()) {
+  if (startChanged && Date.parse(job.startAt) > nowMs) return job.startAt;
+  const overdue = !(Date.parse(job.nextRunAt ?? "") > nowMs);
+  if (!startChanged && !cadenceChanged && !overdue) return null;
+  return nextScheduledRun(job.startAt, job.every, job.unit, nowMs, job.timezone || "UTC");
+}

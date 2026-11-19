@@ -6,7 +6,7 @@ import {
   readScheduledStore,
   withScheduledStore,
 } from "./scheduled-jobs-store.mjs";
-import { nextScheduledRun } from "./scheduled-cadence.mjs";
+import { nextRunAfterEdit, nextScheduledRun } from "./scheduled-cadence.mjs";
 import { assertScheduledJobBody } from "./scheduled-job-input.mjs";
 import { scheduledStorePath } from "./scheduled-runner-path.mjs";
 
@@ -172,8 +172,8 @@ export async function patchScheduledJob(id: string, raw: unknown): Promise<Sched
     const startChanged = fields.startAt !== current.startAt;
     const cadenceChanged = fields.every !== current.every || fields.unit !== current.unit || fields.timezone !== current.timezone;
     Object.assign(current, fields, input.status ? { status: input.status } : {}, { updatedAt: new Date().toISOString() });
-    if (startChanged) current.nextRunAt = fields.startAt;
-    else if (cadenceChanged) current.nextRunAt = nextScheduledRun(current.startAt, fields.every, fields.unit, Date.now(), fields.timezone) || current.nextRunAt;
+    // Saving an edit never makes the job due right now, even when its next run had slipped into the past.
+    current.nextRunAt = nextRunAfterEdit(current, { startChanged, cadenceChanged }) || current.nextRunAt;
     return current;
   });
 }
