@@ -40,3 +40,13 @@ test("the last finished run of a job ignores other jobs and unfinished runs", ()
   assert.equal(lastFinishedRun(runs, "a").at, "2026-11-18T12:00:00.000Z");
   assert.equal(lastFinishedRun(runs, "c"), null);
 });
+
+test("a LinkedIn poll never takes a scheduled run's scan, even when it is the newest inside the window", () => {
+  // The scan started 08:45:27; the watcher polled at 08:46:26, inside the run's +60s slack.
+  const mixed = [
+    { id: "2026-11-20T08:45:27.439Z", startedAt: "2026-11-20T08:45:27.439Z" },
+    { id: "linkedin-2026-11-20T08:46:26.277Z", startedAt: "2026-11-20T08:46:26.277Z" },
+  ];
+  assert.equal(scanForRun(mixed, { at: "2026-11-20T08:45:27.466Z", durationMs: 9_200 }), "2026-11-20T08:45:27.439Z");
+  assert.equal(scanForRun([mixed[1]], { at: "2026-11-20T08:45:27.466Z", durationMs: 9_200 }), null);
+});

@@ -20,6 +20,9 @@ export function scanForRun(scans, run) {
   let bestAt = -Infinity;
   for (const scan of scans) {
     const at = Date.parse(scan.startedAt);
+    // A LinkedIn watcher poll runs on its own clock. It can fall inside a scheduled run's window,
+    // and being the newest, it would take the scan's place.
+    if (String(scan.id).startsWith("linkedin-")) continue;
     if (!Number.isFinite(at) || at < from || at > to) continue;
     if (at > bestAt) {
       best = scan.id;
