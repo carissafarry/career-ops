@@ -57,7 +57,7 @@ export function TriageRow({
     <li
       data-triage-index={index}
       className={cn(
-        "flex items-center gap-2.5 px-3 py-2.5 transition-colors sm:gap-3 sm:px-4",
+        "grid grid-cols-[auto_auto_minmax(0,1fr)] items-start gap-x-2.5 gap-y-1 px-3 py-2.5 transition-colors sm:flex sm:items-center sm:gap-3 sm:px-4",
         selected ? "bg-brand-soft/50" : "hover:bg-surface-hover",
         cursor && "ring-2 ring-inset ring-brand",
         evaluated && "opacity-95",
@@ -72,10 +72,10 @@ export function TriageRow({
         className="size-4 shrink-0 accent-brand max-sm:min-h-[44px] max-sm:min-w-[24px]"
       />
 
-      <CompanyLogo name={job.company} size={20} />
+      <div className="mt-3 sm:mt-0"><CompanyLogo name={job.company} size={20} /></div>
 
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm">
+      <div className="min-w-0 pt-2.5 sm:flex-1 sm:pt-0">
+        <p className="break-words text-sm sm:truncate">
           {postingHref ? (
             <a href={postingHref} target="_blank" rel="noreferrer" className="hover:text-brand-text">
               {title}
@@ -95,7 +95,7 @@ export function TriageRow({
 
       {/* EVALUADA state (right-aligned, visually distinct from raw rows) */}
       {scored?.needsReview ? (
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="col-start-3 flex shrink-0 items-center gap-1 sm:col-start-auto">
           <Link href={`/jobs/${scored.jobId}`} className="flex items-center gap-1.5 text-xs text-amber-800 dark:text-amber-400">
             <CirclePause className="size-3.5" /> Needs review
           </Link>
@@ -110,7 +110,7 @@ export function TriageRow({
           </button>
         </div>
       ) : evaluated && target.href ? (
-        <Link href={target.href} className="flex shrink-0 items-center gap-1.5 text-xs">
+        <Link href={target.href} className="col-start-3 flex shrink-0 items-center gap-1.5 text-xs sm:col-start-auto">
           {scored!.running ? (
             <>
               <Loader2 className="size-3.5 animate-spin text-brand-text" />
@@ -123,7 +123,7 @@ export function TriageRow({
           )}
         </Link>
       ) : (
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="col-start-3 flex shrink-0 items-center gap-1 sm:col-start-auto">
           <button
             type="button"
             onClick={onSave}
