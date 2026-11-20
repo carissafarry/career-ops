@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Ban } from "lucide-react";
-import { COUNTRY_TEMPLATES, REGIONS, countryState, cycleCountry, regionState, toggleRegion, toggleNoCountry, NO_COUNTRY } from "@/lib/location-countries.mjs";
+import { COUNTRY_TEMPLATES, REGIONS, countryState, cycleCountry, regionState, toggleRegion, toggleNoCountry, toggleRemote, REMOTE, NO_COUNTRY } from "@/lib/location-countries.mjs";
 import { cn } from "@/lib/cn";
 
 // Country buttons for a location filter. Click once to include a country, again to
@@ -59,6 +59,24 @@ export function RegionTemplates({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Region shortcuts">
+      {(() => {
+        const on = include.some((item) => item.toLowerCase() === REMOTE.toLowerCase());
+        return (
+          <button
+            type="button"
+            onClick={() => onChange(toggleRemote(include, exclude))}
+            aria-pressed={on}
+            title={on ? "Click to stop matching remote postings" : "Include postings whose location says Remote"}
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors max-sm:min-h-[44px]",
+              on ? "border-brand/40 bg-brand-soft text-brand-text" : "border-border text-muted hover:text-foreground",
+            )}
+          >
+            {on && <Check className="size-3" aria-hidden="true" />}
+            {REMOTE}
+          </button>
+        );
+      })()}
       {(Object.keys(REGIONS) as Array<keyof typeof REGIONS>).map((region) => {
         const state = regionState(include, region);
         return (

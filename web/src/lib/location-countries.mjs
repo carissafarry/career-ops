@@ -75,6 +75,15 @@ export function toggleRegion(include, exclude, region) {
 }
 
 /** The include list after one click on the "No country listed" button. */
+/** The word a posting's location carries when it is remote ("Remote (worldwide)", "Remote, US"). */
+export const REMOTE = "Remote";
+
+/** Add or remove Remote in the include list; adding it also clears it from the exclude list. */
+export function toggleRemote(include, exclude) {
+  if (has(include, REMOTE)) return { include: without(include, REMOTE), exclude };
+  return { include: [...include, REMOTE], exclude: without(exclude, REMOTE) };
+}
+
 export function toggleNoCountry(include) {
   return has(include, NO_COUNTRY) ? without(include, NO_COUNTRY) : [...include, NO_COUNTRY];
 }
