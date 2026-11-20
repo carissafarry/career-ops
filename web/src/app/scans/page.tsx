@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic"; // always read fresh local files
 
 const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
-export default async function ScansPage({ searchParams }: { searchParams: Promise<{ run?: string | string[]; job?: string | string[] }> }) {
+export default async function ScansPage({ searchParams }: { searchParams: Promise<{ run?: string | string[]; job?: string | string[]; empty?: string | string[] }> }) {
   const params = await searchParams;
   const allRuns = readScanRuns();
   // Which scheduled scan produced each scan; a scan no scheduled run matches was started by hand.
@@ -23,9 +23,13 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
   const hasLinkedIn = allRuns.some((r) => isLinkedIn(r.id));
   const hasManual = allRuns.some((r) => !owners.has(r.id) && !isLinkedIn(r.id));
   const jobFilter = first(params.job);
+  // Scans that added nothing are hidden by default so the list shows what produced roles;
+  // "Show empty" brings them back, to confirm the scheduler is actually running.
+  const showEmpty = first(params.empty) === "1";
+  const emptyCount = allRuns.filter((r) => r.added === 0).length;
   const runs = allRuns.filter((r) => {
-    // A poll that found nothing is history worth keeping, but ~12 an hour would bury every other scan in "All".
-    if (!jobFilter) return !(isLinkedIn(r.id) && r.added === 0);
+    if (!showEmpty && r.added === 0) return false;
+    if (!jobFilter) return true;
     if (jobFilter === "linkedin") return isLinkedIn(r.id);
     if (jobFilter === "manual") return !owners.has(r.id) && !isLinkedIn(r.id);
     return owners.get(r.id)?.jobId === jobFilter;
@@ -33,7 +37,15 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
   const wanted = first(params.run);
   const selected = runs.find((r) => r.id === wanted) ?? runs[0];
   const selectedOwner = selected ? owners.get(selected.id) : undefined;
-  const filterHref = (job?: string) => (job ? `/scans?job=${encodeURIComponent(job)}` : "/scans");
+  const query = (job: string | undefined, empty: boolean, run?: string) => {
+    const q = new URLSearchParams();
+    if (run) q.set("run", run);
+    if (job) q.set("job", job);
+    if (empty) q.set("empty", "1");
+    const text = q.toString();
+    return text ? `/scans?${text}` : "/scans";
+  };
+  const filterHref = (job?: string) => query(job, showEmpty);
   // The country each location implies is worked out here, where the city dataset
   // lives, and sent to the filter as plain text.
   const postings = selected
@@ -48,7 +60,7 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
         <p className="mt-2 text-base text-muted">Every scan, and the roles it added. Pick one to see its results.</p>
       </div>
 
-      {allRuns.length > 0 && (jobOptions.length > 0 || hasManual || hasLinkedIn) && (
+      {allRuns.length > 0 && (
         <nav aria-label="Filter scans by scheduled scan" className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-faint">From</span>
           {[{ id: "", name: "All" }, ...jobOptions, ...(hasLinkedIn ? [{ id: "linkedin", name: "LinkedIn" }] : []), ...(hasManual ? [{ id: "manual", name: "Run by hand" }] : [])].map((option) => {
@@ -67,6 +79,16 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
               </Link>
             );
           })}
+          <Link
+            href={query(jobFilter, !showEmpty)}
+            aria-pressed={showEmpty}
+            className={cn(
+              "ml-auto rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50",
+              showEmpty ? "border-brand/40 bg-brand-soft text-brand-text" : "border-border text-muted hover:text-foreground",
+            )}
+          >
+            {showEmpty ? "Showing empty scans" : "Show empty scans"} ({emptyCount})
+          </Link>
         </nav>
       )}
 
@@ -76,7 +98,7 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
         </p>
       ) : runs.length === 0 ? (
         <p className="rounded-2xl border border-border bg-surface px-6 py-8 text-base text-muted shadow-card">
-          No scans match this filter yet.
+          {showEmpty ? "No scans match this filter yet." : "No scans with new roles match this filter. Use \"Show empty scans\" to see every run."}
         </p>
       ) : (
         <div className="grid items-start gap-6 lg:grid-cols-[18rem_1fr]">
@@ -87,7 +109,7 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
               return (
                 <li key={run.id}>
                   <Link
-                    href={`/scans?run=${encodeURIComponent(run.id)}${jobFilter ? `&job=${encodeURIComponent(jobFilter)}` : ""}`}
+                    href={query(jobFilter, showEmpty, run.id)}
                     aria-current={active ? "page" : undefined}
                     className={cn(
                       "block rounded-xl border px-4 py-3 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50",
