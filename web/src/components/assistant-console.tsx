@@ -22,6 +22,7 @@ import { StatusWriteError, writeAssistantStatus } from "@/lib/assistant-status-w
 import { postAssistantWrite } from "@/lib/assistant-file-write.mjs";
 import { cn } from "@/lib/cn";
 import { CONFIG_KEY, subscribeConfig } from "@/lib/config-events.mjs";
+import { uuid } from "@/lib/uuid";
 
 // ── message model: messages are PART arrays so a live worker card can render
 // inline next to text, both fed by the single JobsProvider store ──────────────
@@ -323,7 +324,7 @@ export function AssistantConsole() {
       try {
         const chat = await chatRequest("/api/assistant/chats", {
           method: "PUT", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...current, writer: writerId.current ||= crypto.randomUUID(), seq: ++saveSeq.current, ...(title ? { title } : {}), messages: snapshot }),
+          body: JSON.stringify({ ...current, writer: writerId.current ||= uuid(), seq: ++saveSeq.current, ...(title ? { title } : {}), messages: snapshot }),
         });
         current.revision = chat.revision;
         current.title = chat.title;
@@ -353,7 +354,7 @@ export function AssistantConsole() {
           if (migrated.some(m => m.role === "user")) {
             // A stable migration id makes retrying a lost response safe.
             const key = `${CHAT_KEY}:migration-id`;
-            const id = localStorage.getItem(key) || crypto.randomUUID();
+            const id = localStorage.getItem(key) || uuid();
             localStorage.setItem(key, id);
             if (data.chats.some((c: { id: string }) => c.id === id)) {
               restored = await chatRequest(`/api/assistant/chats?id=${id}`);
@@ -368,7 +369,7 @@ export function AssistantConsole() {
         }
         if (!restored && data.chats.length) restored = await chatRequest(`/api/assistant/chats?id=${data.chats[0].id}`);
         if (cancelled) return;
-        activeChat.current = restored ? { id: restored.id, revision: restored.revision, title: restored.title } : { id: crypto.randomUUID(), revision: 0 };
+        activeChat.current = restored ? { id: restored.id, revision: restored.revision, title: restored.title } : { id: uuid(), revision: 0 };
         const next = restored ? cleanMessages(restored.messages) as Msg[] : [];
         savedSnapshot.current = JSON.stringify(next);
         messagesRef.current = next;
@@ -402,7 +403,7 @@ export function AssistantConsole() {
     try {
       await flushChat();
       const chat = id ? await chatRequest(`/api/assistant/chats?id=${id}`) : null;
-      activeChat.current = chat ? { id: chat.id, revision: chat.revision, title: chat.title } : { id: crypto.randomUUID(), revision: 0 };
+      activeChat.current = chat ? { id: chat.id, revision: chat.revision, title: chat.title } : { id: uuid(), revision: 0 };
       const next = chat ? cleanMessages(chat.messages) as Msg[] : [];
       savedSnapshot.current = JSON.stringify(next);
       messagesRef.current = next;
@@ -432,7 +433,7 @@ export function AssistantConsole() {
     try {
       // Let writes already in flight finish before changing the active id.
       await saveQueue.current.catch(() => {});
-      activeChat.current = { id: crypto.randomUUID(), revision: 0 };
+      activeChat.current = { id: uuid(), revision: 0 };
       savedSnapshot.current = "";
       messagesRef.current = [];
       setMessages([]);
@@ -458,7 +459,7 @@ export function AssistantConsole() {
       await flushChat();
       const { id, revision } = activeChat.current;
       await chatRequest(`/api/assistant/chats?id=${id}&revision=${revision}`, { method: "DELETE" });
-      activeChat.current = { id: crypto.randomUUID(), revision: 0 };
+      activeChat.current = { id: uuid(), revision: 0 };
       savedSnapshot.current = "";
       messagesRef.current = [];
       setMessages([]);
