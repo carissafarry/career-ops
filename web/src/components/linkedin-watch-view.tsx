@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LinkedInIcon } from "@/components/icons/linkedin-icon";
-import { Bell, ChevronDown, CircleCheck, ExternalLink, Info, ListPlus, Loader2, OctagonAlert, Trash2, TriangleAlert } from "lucide-react";
+import { Bell, ChevronDown, CircleCheck, Info, ListPlus, Loader2, OctagonAlert, Trash2, TriangleAlert } from "lucide-react";
 import { pageFrameWidthClass } from "@/components/page-frame";
 import { RegionTemplates } from "@/components/country-templates";
 import { byPostedNewest, postedAgeNow } from "@/lib/linkedin-watch/posted-age.mjs";
@@ -456,9 +456,9 @@ export function LinkedInWatchView() {
               {searches.length > 0 && (
                 <ul className="mt-3 space-y-1.5">
                   {searches.map((x) => (
-                    <li key={x.id} className={`flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 ${x.active ? "border-brand/40 bg-brand-soft/50" : "border-border bg-surface"}`}>
+                    <li key={x.id} className={`flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center rounded-lg border px-3 py-2 ${x.active ? "border-brand/40 bg-brand-soft/50" : "border-border bg-surface"}`}>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-foreground">{x.name}{x.active && <span className="ml-2 rounded-full bg-brand px-2 py-0.5 text-[11px] font-medium text-white">In use</span>}</p>
+                        <p className="text-sm font-medium text-foreground">{x.name}{x.active && <span className="ml-2 whitespace-nowrap rounded-full bg-brand px-2 py-0.5 text-[11px] font-medium text-white">In use</span>}</p>
                         <p className="text-xs text-muted">{x.count} {x.count === 1 ? "job" : "jobs"} in its list</p>
                         {editing?.id === x.id ? (
                           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -471,11 +471,11 @@ export function LinkedInWatchView() {
                         )}
                       </div>
                       {editing?.id !== x.id && (
-                        <>
+                        <div className="flex flex-wrap items-center gap-2">
                           {!x.active && <button disabled={busy} onClick={() => useSearch(x.id)} className="rounded-full bg-brand px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">Use</button>}
                           <button disabled={busy} onClick={() => setEditing({ id: x.id, url: x.url })} className="rounded-full border border-border px-3 py-1.5 text-sm text-foreground disabled:opacity-50">Edit URL</button>
                           <button disabled={busy} onClick={() => deleteSearch(x)} className="rounded-full border border-border px-3 py-1.5 text-sm text-foreground disabled:opacity-50">Remove</button>
-                        </>
+                        </div>
                       )}
                     </li>
                   ))}
@@ -617,11 +617,12 @@ export function LinkedInWatchView() {
         )}
         <ul className="space-y-2">
           {postings.map((p) => (
-            <li key={p.id} className={`flex flex-wrap items-center gap-3 rounded-xl border p-3.5 shadow-card ${rowStyle(p)}`}>
-              <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} aria-label={`Select ${p.title} at ${p.company}`} className="size-4 shrink-0 accent-[var(--color-brand)]" />
-              <div className="min-w-0 flex-1">
-                <p className="flex flex-wrap items-center gap-2 text-[15px] font-medium text-foreground">
-                  <span className="truncate">{p.title}</span>
+            <li key={p.id} className={`grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2.5 rounded-xl border p-3.5 shadow-card sm:flex sm:flex-wrap sm:items-center ${rowStyle(p)}`}>
+              <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} aria-label={`Select ${p.title} at ${p.company}`} className="mt-1 size-4 shrink-0 accent-[var(--color-brand)] sm:mt-0" />
+              <div className="min-w-0 sm:flex-1">
+                <a href={p.link} target="_blank" rel="noreferrer" onClick={() => { if (!p.acknowledged) post("/api/linkedin-watch", { action: "ack", id: p.id }); }} className="group block">
+                <p className="flex flex-wrap items-center gap-2 text-[15px] font-medium text-foreground group-hover:text-brand-text group-hover:underline">
+                  <span className="min-w-0 break-words">{p.title}</span>
                   {!p.acknowledged && !p.notified && <span className="shrink-0 rounded-full border border-brand/40 px-2 py-0.5 text-[11px] font-semibold text-brand-text">New</span>}
                   {p.notified && <span title="This posting triggered a macOS notification" className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-text px-2 py-0.5 text-[11px] font-semibold text-white"><Bell className="size-3" /> Notification</span>}
                   {p.applied && <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-700 px-2 py-0.5 text-[11px] font-semibold text-white"><CircleCheck className="size-3" /> Applied</span>}
@@ -632,12 +633,10 @@ export function LinkedInWatchView() {
                   if (!age && !p.postedText) return null;
                   return <span title={p.postedText ? `LinkedIn showed "${p.postedText}" when the watcher read this job. The age here counts on from that.` : undefined}>{` · ${age ?? p.postedText}`}</span>;
                 })()}</p>
+                </a>
                 <p className="text-xs text-faint">Seen {ago(p.firstSeen)} · may be a repost if you saw it before</p>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <a href={p.link} target="_blank" rel="noreferrer" onClick={() => { if (!p.acknowledged) post("/api/linkedin-watch", { action: "ack", id: p.id }); }} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-sm text-foreground">
-                  Open <ExternalLink className="size-3.5" />
-                </a>
+              <div className="col-start-2 flex flex-wrap items-center gap-2 sm:col-start-auto">
                 {!p.applied && !p.addedToPipeline && (
                   <button disabled={busy} onClick={() => act("pipeline", [p.id])} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-sm text-foreground disabled:opacity-50"><ListPlus className="size-3.5" /> Pipeline</button>
                 )}
