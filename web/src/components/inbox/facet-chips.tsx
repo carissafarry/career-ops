@@ -1,7 +1,8 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import { FRESHNESS_WINDOWS, PLATFORM_LABEL, SENIORITY_LABEL, type PlatformSource, type Seniority } from "@/lib/inbox";
+import { FRESHNESS_WINDOWS, SENIORITY_LABEL, type PlatformSource, type Seniority } from "@/lib/inbox";
+import { PLATFORM_LABEL } from "@/lib/platform-sources";
 import { CostBadge } from "@/components/cost/cost-badge";
 import { cn } from "@/lib/cn";
 import { CountryTemplates, RegionTemplates } from "@/components/country-templates";

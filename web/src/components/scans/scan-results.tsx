@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { PLATFORM_ORDER, SENIORITY_ORDER, daysSince, seniorityFromTitle, sourceFromUrl, type PlatformSource, type Seniority } from "@/lib/inbox";
+import { SENIORITY_ORDER, daysSince, seniorityFromTitle, sourceFromUrl, type PlatformSource, type Seniority } from "@/lib/inbox";
+import { PLATFORM_ORDER } from "@/lib/platform-sources";
 import { locationExcluded, locationMatchesAny } from "@/lib/location-facet.mjs";
 import { FacetChips } from "@/components/inbox/facet-chips";
 import { useSourceFilter } from "@/lib/source-exclusions";

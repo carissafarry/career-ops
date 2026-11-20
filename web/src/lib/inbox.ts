@@ -3,13 +3,10 @@
 // row for the facet chips. Fit order lives in core/inbox-rank.mjs, one rule
 // for the inbox and what's new. Do not add a second sort here.
 
-import { ATS_LABEL, ATS_SOURCES, type AtsSource } from "@/lib/explore";
+import type { AtsSource } from "@/lib/explore";
 
-/** Where a posting was found, for the Platform filter: every ATS and job board, plus LinkedIn. LinkedIn is read by the
- *  LinkedIn watcher, not scanned from Explore, so it is deliberately not part of AtsSource (the sources Explore scans). */
+/** Where a posting was found, for the Platform filter: every ATS and job board, plus LinkedIn. Its order and labels live in platform-sources.ts, which needs the runtime import this file must not have. */
 export type PlatformSource = AtsSource | "linkedin";
-export const PLATFORM_ORDER: PlatformSource[] = [...ATS_SOURCES, "linkedin"];
-export const PLATFORM_LABEL: Record<PlatformSource, string> = { ...ATS_LABEL, linkedin: "LinkedIn" };
 
 /** Which ATS a posting lives on, derived from its URL host (0 tokens, no network).
  *  Matches on the registrable domain anchored at a dot boundary (host === base OR
@@ -65,9 +62,14 @@ export function seniorityFromTitle(title: string): Seniority | null {
 /** Whole days between an ISO date (YYYY-MM-DD) and now; null if unparseable. */
 export function daysSince(iso: string | undefined, now: number): number | null {
   if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
-  const t = Date.parse(`${iso}T00:00:00Z`);
-  if (Number.isNaN(t)) return null;
-  return Math.floor((now - t) / 86_400_000);
+  const then = Date.parse(`${iso}T00:00:00Z`);
+  if (Number.isNaN(then)) return null;
+  const current = new Date(now);
+  const today = Date.UTC(current.getFullYear(), current.getMonth(), current.getDate());
+  const days = Math.round((today - then) / 86_400_000);
+  // A job-board posted_at is the UTC day. On a US evening that day is already
+  // tomorrow, so the raw difference is -1. The row is still today.
+  return days < 0 ? 0 : days;
 }
 
 // Freshness windows mirror the Explore "posted within" segmented control so the two

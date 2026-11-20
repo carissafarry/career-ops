@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { Bookmark, BookmarkCheck, CircleCheck, Loader2, X, CirclePause } from "lucide-react";
 import type { InboxJob } from "@/lib/career-ops";
-import { PLATFORM_LABEL, type PlatformSource } from "@/lib/inbox";
+import { type PlatformSource } from "@/lib/inbox";
+import { PLATFORM_LABEL } from "@/lib/platform-sources";
 import { unscoredInboxHref } from "@/lib/posting-url.mjs";
 import { Badge } from "@/components/ui/badge";
 import { CompanyLogo } from "@/components/company-logo";
