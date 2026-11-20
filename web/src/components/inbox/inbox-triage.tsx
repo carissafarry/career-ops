@@ -28,6 +28,9 @@ import { DEFAULT_INBOX_SORT, INBOX_SORT_STORAGE_KEY, readInboxSort, writeInboxSo
 
 const SHORTLIST_KEY = "career-ops:shortlist";
 const HIDDEN_KEY = "career-ops:hidden";
+// The inbox facets, kept per browser so leaving the tab or reloading does not reset them.
+// The scan filter is left out: scan runs are short-lived, and a stale id would hide every row.
+const FILTERS_KEY = "career-ops:inbox-filters";
 const BATCH = 20;
 // Reading window.localStorage itself throws when storage is blocked.
 function browserStorage(): Storage | null {
@@ -96,6 +99,19 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
     } catch {
       /* ignore */
     }
+    try {
+      const f = JSON.parse(localStorage.getItem(FILTERS_KEY) ?? "null") as Record<string, unknown> | null;
+      if (f && typeof f === "object") {
+        if (typeof f.within === "number") setWithin(f.within);
+        if (Array.isArray(f.sources)) setSources(new Set(f.sources as PlatformSource[]));
+        if (Array.isArray(f.seniorities)) setSeniorities(new Set(f.seniorities as Seniority[]));
+        if (typeof f.locQ === "string") setLocQ(f.locQ);
+        if (typeof f.locNot === "string") setLocNot(f.locNot);
+        if (typeof f.kw === "string") setKw(f.kw);
+      }
+    } catch {
+      /* ignore */
+    }
     setLoaded(true);
     // First SSR inbox only — later refreshes prune via the inbox effect below.
   }, []);
@@ -124,6 +140,9 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
   useEffect(() => {
     if (loaded) try { localStorage.setItem(SHORTLIST_KEY, JSON.stringify(shortlist)); } catch { /* quota */ }
   }, [shortlist, loaded]);
+  useEffect(() => {
+    if (loaded) try { localStorage.setItem(FILTERS_KEY, JSON.stringify({ within, sources: [...sources], seniorities: [...seniorities], locQ, locNot, kw })); } catch { /* quota */ }
+  }, [within, sources, seniorities, locQ, locNot, kw, loaded]);
   useEffect(() => {
     if (loaded) try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden)); } catch { /* quota */ }
   }, [hidden, loaded]);
