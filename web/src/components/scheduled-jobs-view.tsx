@@ -213,7 +213,7 @@ export function ScheduledJobsView() {
   const scanRunning = scheduler?.running === true;
 
   return (
-    <div className={`mx-auto px-5 py-8 md:px-8 space-y-8 ${pageFrameWidthClass.wide}`}>
+    <div className={`mx-auto px-5 pt-8 pb-32 md:px-8 space-y-8 ${pageFrameWidthClass.wide}`}>
       {/* Header matching Explore & Portals format */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border pb-6">
         <div>
