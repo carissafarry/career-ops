@@ -3,6 +3,7 @@
 import { memo, startTransition, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useOptimistic, useRef, useState, useTransition, type MouseEvent, type PointerEvent } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { FilterSync } from "@/components/filter-sync";
 import { Search, ChevronsUpDown, X, Compass, ArrowRight, ExternalLink, Download, FileText } from "lucide-react";
 import type { Application, InboxJob } from "@/lib/career-ops";
 import { Badge } from "@/components/ui/badge";
@@ -955,6 +956,7 @@ export function PipelineView({
             Save view
           </button>
         )}
+        <FilterSync />
         {viewError && <span role="alert" className="text-xs text-red-500">{viewError}</span>}
         {removalWarning && <span role="alert" className="text-xs text-red-500">{removalWarning}</span>}
       </div>
