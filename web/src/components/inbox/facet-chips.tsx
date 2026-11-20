@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
 import { CountryTemplates, RegionTemplates } from "@/components/country-templates";
 import { listOf, textOf } from "@/lib/location-countries.mjs";
 import { SourceExclusionMenu } from "@/components/inbox/source-exclusion-menu";
-import type { SourceScope } from "@/lib/source-exclusions";
+import { siteLabel, type SourceScope } from "@/lib/source-exclusions";
 
 // Free, client-side facets over the raw firehose — 0 tokens, instant. Mirrors the
 // Explore chip language so the two surfaces read as one system. One labeled row per
@@ -27,6 +27,9 @@ export function FacetChips({
   kw,
   setKw,
   availSources,
+  availSites = [],
+  sites,
+  toggleSite,
   availSeniorities,
   allUrls,
   sourceScope,
@@ -49,6 +52,10 @@ export function FacetChips({
   kw: string;
   setKw: (v: string) => void;
   availSources: PlatformSource[];
+  /** Sites that are not one of the platforms above (jobstreet, himalayas...), as chips in the same row. */
+  availSites?: string[];
+  sites?: Set<string>;
+  toggleSite?: (s: string) => void;
   availSeniorities: Seniority[];
   /** Every posting URL in the list, for the sites the exclusion menu offers. */
   allUrls: string[];
@@ -99,11 +106,16 @@ export function FacetChips({
           </div>
         </Row>
 
-        {availSources.length > 0 && (
+        {(availSources.length > 0 || availSites.length > 0) && (
           <Row label="Platform">
             {availSources.map((s) => (
               <Pill key={s} on={sources.has(s)} onClick={() => toggleSource(s)}>
                 {PLATFORM_LABEL[s]}
+              </Pill>
+            ))}
+            {availSites.map((s) => (
+              <Pill key={`site:${s}`} on={Boolean(sites?.has(s))} onClick={() => toggleSite?.(s)}>
+                {siteLabel(s)}
               </Pill>
             ))}
           </Row>

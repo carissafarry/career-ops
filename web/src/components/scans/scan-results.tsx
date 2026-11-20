@@ -5,7 +5,7 @@ import { SENIORITY_ORDER, daysSince, seniorityFromTitle, sourceFromUrl, type Pla
 import { PLATFORM_ORDER } from "@/lib/platform-sources";
 import { locationExcluded, locationMatchesAny } from "@/lib/location-facet.mjs";
 import { FacetChips } from "@/components/inbox/facet-chips";
-import { useSourceFilter } from "@/lib/source-exclusions";
+import { siteFromUrl, useSourceFilter } from "@/lib/source-exclusions";
 
 export type ScanResultRow = {
   url: string;
@@ -29,6 +29,7 @@ const ROW_LIMIT = 200;
 export function ScanResults({ postings }: { postings: ScanResultRow[] }) {
   const [within, setWithin] = useState<number | null>(null);
   const [sources, setSources] = useState<Set<PlatformSource>>(() => new Set());
+  const [sites, setSites] = useState<Set<string>>(() => new Set());
   const [seniorities, setSeniorities] = useState<Set<Seniority>>(() => new Set());
   const [locQ, setLocQ] = useState("");
   const [locNot, setLocNot] = useState("");
@@ -41,6 +42,8 @@ export function ScanResults({ postings }: { postings: ScanResultRow[] }) {
       postings.map((posting) => ({
         posting,
         source: sourceFromUrl(posting.url),
+        // A site that is not one of the platforms above (jobstreet, himalayas...) is filtered by its own name.
+        site: sourceFromUrl(posting.url) ? null : siteFromUrl(posting.url),
         seniority: seniorityFromTitle(posting.role),
         age: daysSince(posting.postedAt || posting.firstSeen, now),
       })),
@@ -51,6 +54,11 @@ export function ScanResults({ postings }: { postings: ScanResultRow[] }) {
     const present = new Set<PlatformSource>();
     for (const e of enriched) if (e.source) present.add(e.source);
     return PLATFORM_ORDER.filter((s) => present.has(s));
+  }, [enriched]);
+  const availSites = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const e of enriched) if (e.site) counts.set(e.site, (counts.get(e.site) ?? 0) + 1);
+    return [...counts.keys()].sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0) || a.localeCompare(b));
   }, [enriched]);
   const availSeniorities = useMemo(() => {
     const present = new Set<Seniority>();
@@ -64,17 +72,18 @@ export function ScanResults({ postings }: { postings: ScanResultRow[] }) {
       enriched.filter((e) => {
         if (isHidden(e.posting.url)) return false;
         if (within != null && (e.age == null || e.age > within)) return false;
-        if (sources.size && (!e.source || !sources.has(e.source))) return false;
+        // Platforms and sites are one choice: a role passes when it is on any of the selected ones.
+        if ((sources.size || sites.size) && !((e.source && sources.has(e.source)) || (e.site && sites.has(e.site)))) return false;
         if (seniorities.size && (!e.seniority || !seniorities.has(e.seniority))) return false;
         if (locQ.trim() && !locationMatchesAny(e.posting.locationKeys || e.posting.location, locQ)) return false;
         if (locationExcluded(e.posting.locationKeys || e.posting.location, locNot)) return false;
         if (kw.trim() && !`${e.posting.company} ${e.posting.role}`.toLowerCase().includes(kw.trim().toLowerCase())) return false;
         return true;
       }),
-    [enriched, isHidden, within, sources, seniorities, locQ, locNot, kw],
+    [enriched, isHidden, within, sources, sites, seniorities, locQ, locNot, kw],
   );
 
-  const anyActive = within != null || sources.size > 0 || seniorities.size > 0 || locQ.trim() !== "" || locNot.trim() !== "" || kw.trim() !== "";
+  const anyActive = within != null || sources.size > 0 || sites.size > 0 || seniorities.size > 0 || locQ.trim() !== "" || locNot.trim() !== "" || kw.trim() !== "";
   const shown = showAll ? filtered : filtered.slice(0, ROW_LIMIT);
   const hasPosted = postings.some((p) => p.postedAt);
 
@@ -95,12 +104,15 @@ export function ScanResults({ postings }: { postings: ScanResultRow[] }) {
         kw={kw}
         setKw={setKw}
         availSources={availSources}
+        availSites={availSites}
+        sites={sites}
+        toggleSite={(s) => setSites((set) => { const next = new Set(set); if (next.has(s)) next.delete(s); else next.add(s); return next; })}
         availSeniorities={availSeniorities}
         allUrls={postings.map((p) => p.url)}
         resultCount={filtered.length}
         totalCount={enriched.filter((e) => !isHidden(e.posting.url)).length}
         anyActive={anyActive}
-        onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setLocNot(""); setKw(""); }}
+        onClear={() => { setWithin(null); setSources(new Set()); setSites(new Set()); setSeniorities(new Set()); setLocQ(""); setLocNot(""); setKw(""); }}
       />
 
       {filtered.length === 0 ? (
