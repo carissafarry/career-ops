@@ -1,4 +1,4 @@
-export const MIN_SCHEDULE_MINUTES = 15;
+export const MIN_SCHEDULE_MINUTES = 5;
 
 export function cadenceMinimum(unit) {
   return unit === "minutes" ? MIN_SCHEDULE_MINUTES : 1;

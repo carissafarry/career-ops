@@ -61,7 +61,7 @@ export function EditJobModal({
       await updateScheduledJobRequest(job.id, {
         name,
         engine,
-        every,
+        every: cadenceValueForUnit(every, unit),
         unit,
         filters,
       });
@@ -133,7 +133,8 @@ export function EditJobModal({
                   type="number"
                   min={cadenceMinimum(unit)}
                   value={every}
-                  onChange={(e) => setEvery(Math.max(cadenceMinimum(unit), Number(e.target.value)))}
+                  onChange={(e) => setEvery(Math.max(0, Number(e.target.value)))}
+                  onBlur={() => setEvery((value) => cadenceValueForUnit(value, unit))}
                   className="w-20 rounded-xl border border-border bg-surface-hover/60 px-3.5 py-2 text-sm text-foreground outline-none focus:border-brand/60"
                 />
                 <select

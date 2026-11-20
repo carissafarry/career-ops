@@ -71,7 +71,7 @@ function cleanEvery(value: unknown, unit: ScheduleUnit, fallback: number): numbe
   if (value === undefined) return fallback;
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) throw new ScheduledJobValidationError("Invalid cadence.");
-  const minimum = unit === "minutes" ? 15 : 1;
+  const minimum = unit === "minutes" ? 5 : 1;
   return Math.min(10_000, Math.max(minimum, Math.round(parsed)));
 }
 

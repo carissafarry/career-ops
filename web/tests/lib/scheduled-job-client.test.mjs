@@ -93,7 +93,7 @@ test("scheduled-job CRUD uses the shared store resolver", () => {
 });
 
 test("minute cadence changes clamp to the shared minimum without shrinking larger values", () => {
-  assert.equal(cadenceValueForUnit(6, "minutes"), MIN_SCHEDULE_MINUTES);
+  assert.equal(cadenceValueForUnit(3, "minutes"), MIN_SCHEDULE_MINUTES);
   assert.equal(cadenceValueForUnit(30, "minutes"), 30);
   assert.equal(cadenceValueForUnit(15, "hours"), 15);
 });
