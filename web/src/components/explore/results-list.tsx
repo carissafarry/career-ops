@@ -9,7 +9,7 @@ import { PLATFORM_ORDER } from "@/lib/platform-sources";
 import { locationExcluded, locationMatchesAny } from "@/lib/location-facet.mjs";
 import { FacetChips } from "@/components/inbox/facet-chips";
 import { RemovedBar } from "./removed-bar";
-import { useSourceFilter } from "@/lib/source-exclusions";
+import { siteFromUrl, useSourceFilter } from "@/lib/source-exclusions";
 import { CHINA_SOURCES } from "@/lib/employer-preset.mjs";
 import {
   DEFAULT_SORT,
@@ -55,6 +55,7 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
   // Roles already in the pipeline are hidden unless the user asks to include them.
   const [within, setWithin] = useState<number | null>(null);
   const [sources, setSources] = useState<Set<PlatformSource>>(() => new Set());
+  const [sites, setSites] = useState<Set<string>>(() => new Set());
   const [seniorities, setSeniorities] = useState<Set<Seniority>>(() => new Set());
   const [locQ, setLocQ] = useState("");
   const [locNot, setLocNot] = useState("");
@@ -62,7 +63,7 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
   const [includePipeline, setIncludePipeline] = useState(true);
   const now = useMemo(() => Date.now(), []);
   const tagged = useMemo(
-    () => offers.map((offer) => ({ offer, source: sourceFromUrl(offer.url), seniority: seniorityFromTitle(offer.title), age: daysSince(offer.postedAt, now) })),
+    () => offers.map((offer) => ({ offer, source: sourceFromUrl(offer.url), site: sourceFromUrl(offer.url) ? null : siteFromUrl(offer.url), seniority: seniorityFromTitle(offer.title), age: daysSince(offer.postedAt, now) })),
     [offers, now],
   );
   const inPipelineCount = useMemo(() => offers.filter((o) => o.inPipeline).length, [offers]);
@@ -70,6 +71,11 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
     const present = new Set<PlatformSource>();
     for (const t of tagged) if (t.source) present.add(t.source);
     return PLATFORM_ORDER.filter((s) => present.has(s));
+  }, [tagged]);
+  const availSites = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const t of tagged) if (t.site) counts.set(t.site, (counts.get(t.site) ?? 0) + 1);
+    return [...counts.keys()].sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0) || a.localeCompare(b));
   }, [tagged]);
   const availSeniorities = useMemo(() => {
     const present = new Set<Seniority>();
@@ -86,16 +92,16 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
           if (removed.has(t.offer.url)) return false;
           if (!includePipeline && t.offer.inPipeline) return false;
           if (within != null && (t.age == null || t.age > within)) return false;
-          if (sources.size && (!t.source || !sources.has(t.source))) return false;
+          if ((sources.size || sites.size) && !((t.source && sources.has(t.source)) || (t.site && sites.has(t.site)))) return false;
           if (seniorities.size && (!t.seniority || !seniorities.has(t.seniority))) return false;
           if (locQ.trim() && !locationMatchesAny(t.offer.locationKeys || t.offer.location || "", locQ)) return false;
           if (locationExcluded(t.offer.locationKeys || t.offer.location || "", locNot)) return false;
           return true;
         })
         .map((t) => t.offer),
-    [tagged, isHidden, removed, includePipeline, within, sources, seniorities, locQ, locNot],
+    [tagged, isHidden, removed, includePipeline, within, sources, sites, seniorities, locQ, locNot],
   );
-  const facetActive = within != null || sources.size > 0 || seniorities.size > 0 || locQ.trim() !== "" || locNot.trim() !== "";
+  const facetActive = within != null || sources.size > 0 || sites.size > 0 || seniorities.size > 0 || locQ.trim() !== "" || locNot.trim() !== "";
 
   // Fit bands are free title-vs-profile estimates on scan offers only; the fit
   // controls stay out of the way when nothing in this result set carries one.
@@ -146,12 +152,15 @@ export function ResultsList({ offers }: { offers: EnrichedOffer[] }) {
         kw={q}
         setKw={setQ}
         availSources={availSources}
+        availSites={availSites}
+        sites={sites}
+        toggleSite={(s) => setSites((set) => { const next = new Set(set); if (next.has(s)) next.delete(s); else next.add(s); return next; })}
         availSeniorities={availSeniorities}
         allUrls={offers.map((o) => o.url)}
         resultCount={view.length}
         totalCount={tagged.filter((t) => !isHidden(t.offer.url) && !removed.has(t.offer.url) && (includePipeline || !t.offer.inPipeline)).length}
         anyActive={facetActive || q.trim() !== ""}
-        onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setLocNot(""); setQ(""); }}
+        onClear={() => { setWithin(null); setSources(new Set()); setSites(new Set()); setSeniorities(new Set()); setLocQ(""); setLocNot(""); setQ(""); }}
       />
 
       <div className="flex flex-wrap items-center gap-3">

@@ -13,7 +13,7 @@ import { orderInbox } from "@/lib/core/inbox-rank.mjs";
 import { cursorAfterRemoval, inboxCommand, moveCursor, selectionWithout, typingFromTarget } from "@/lib/inbox-keys.mjs";
 import { inboxScoreTarget, skippableJobs } from "@/lib/inbox-score-target.mjs";
 import { FacetChips } from "./facet-chips";
-import { useSourceFilter } from "@/lib/source-exclusions";
+import { siteFromUrl, useSourceFilter } from "@/lib/source-exclusions";
 import type { ScanRunSummary } from "@/lib/scan-runs";
 import { scanLabel } from "@/lib/scan-runs-core.mjs";
 import { locationExcluded, locationMatchesAny } from "@/lib/location-facet.mjs";
@@ -54,6 +54,7 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
   // facets
   const [within, setWithin] = useState<number | null>(null);
   const [sources, setSources] = useState<Set<PlatformSource>>(() => new Set());
+  const [sites, setSites] = useState<Set<string>>(() => new Set());
   const [seniorities, setSeniorities] = useState<Set<Seniority>>(() => new Set());
   const [locQ, setLocQ] = useState("");
   const [locNot, setLocNot] = useState("");
@@ -105,6 +106,7 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
       if (f && typeof f === "object") {
         if (typeof f.within === "number") setWithin(f.within);
         if (Array.isArray(f.sources)) setSources(new Set(f.sources as PlatformSource[]));
+        if (Array.isArray(f.sites)) setSites(new Set(f.sites.filter((s): s is string => typeof s === "string")));
         if (Array.isArray(f.seniorities)) setSeniorities(new Set(f.seniorities as Seniority[]));
         if (typeof f.locQ === "string") setLocQ(f.locQ);
         if (typeof f.locNot === "string") setLocNot(f.locNot);
@@ -142,8 +144,8 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
     if (loaded) try { localStorage.setItem(SHORTLIST_KEY, JSON.stringify(shortlist)); } catch { /* quota */ }
   }, [shortlist, loaded]);
   useEffect(() => {
-    if (loaded) try { localStorage.setItem(FILTERS_KEY, JSON.stringify({ within, sources: [...sources], seniorities: [...seniorities], locQ, locNot, kw })); } catch { /* quota */ }
-  }, [within, sources, seniorities, locQ, locNot, kw, loaded]);
+    if (loaded) try { localStorage.setItem(FILTERS_KEY, JSON.stringify({ within, sources: [...sources], sites: [...sites], seniorities: [...seniorities], locQ, locNot, kw })); } catch { /* quota */ }
+  }, [within, sources, sites, seniorities, locQ, locNot, kw, loaded]);
   useEffect(() => {
     if (loaded) try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(hidden)); } catch { /* quota */ }
   }, [hidden, loaded]);
@@ -170,11 +172,11 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
   // triages once (and Save/Skip/score, all keyed by URL, act on it coherently).
   const enriched = useMemo(() => {
     const seen = new Set<string>();
-    const out: { job: InboxJob; source: PlatformSource | null; seniority: Seniority | null; age: number | null }[] = [];
+    const out: { job: InboxJob; source: PlatformSource | null; site: string | null; seniority: Seniority | null; age: number | null }[] = [];
     for (const job of inbox) {
       if (seen.has(job.url)) continue;
       seen.add(job.url);
-      out.push({ job, source: sourceFromUrl(job.url), seniority: seniorityFromTitle(job.role), age: daysSince(job.postedAt, now) });
+      out.push({ job, source: sourceFromUrl(job.url), site: sourceFromUrl(job.url) ? null : siteFromUrl(job.url), seniority: seniorityFromTitle(job.role), age: daysSince(job.postedAt, now) });
     }
     return out;
   }, [inbox, now]);
@@ -200,6 +202,12 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
     for (const e of enriched) if (e.source && !hidden.includes(e.job.url)) set.add(e.source);
     return PLATFORM_ORDER.filter((s) => set.has(s));
   }, [enriched, hidden]);
+  // Sites that are not one of those platforms (jobstreet, himalayas...), biggest first.
+  const availSites = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const e of enriched) if (e.site && !hidden.includes(e.job.url)) counts.set(e.site, (counts.get(e.site) ?? 0) + 1);
+    return [...counts.keys()].sort((a, b) => (counts.get(b) ?? 0) - (counts.get(a) ?? 0) || a.localeCompare(b));
+  }, [enriched, hidden]);
   const availSeniorities = useMemo(() => {
     const set = new Set<Seniority>();
     for (const e of enriched) if (e.seniority && !hidden.includes(e.job.url)) set.add(e.seniority);
@@ -213,7 +221,7 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
         if (hidden.includes(e.job.url)) return false;
         if (isHidden(e.job.url)) return false;
         if (within != null && (e.age == null || e.age > within)) return false;
-        if (sources.size && (!e.source || !sources.has(e.source))) return false;
+        if ((sources.size || sites.size) && !((e.source && sources.has(e.source)) || (e.site && sites.has(e.site)))) return false;
         if (seniorities.size && (!e.seniority || !seniorities.has(e.seniority))) return false;
         if (scanId && scans?.byUrl[e.job.url] !== scanId) return false;
         if (locQ.trim() && !locationMatchesAny(e.job.locationKeys ?? e.job.location ?? "", locQ)) return false;
@@ -221,7 +229,7 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
         if (kw.trim() && !`${e.job.company} ${e.job.role}`.toLowerCase().includes(kw.trim().toLowerCase())) return false;
         return true;
       }),
-    [enriched, hidden, isHidden, within, sources, seniorities, locQ, locNot, kw, scanId, scans],
+    [enriched, hidden, isHidden, within, sources, sites, seniorities, locQ, locNot, kw, scanId, scans],
   );
 
   // Fit order lives in core/inbox-rank.mjs. This is the only sort.
@@ -231,7 +239,7 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
     fit: entry.job.fit ?? null,
   })), sortMode), [filtered, sortMode]);
 
-  const anyFacet = within != null || sources.size > 0 || seniorities.size > 0 || locQ.trim() !== "" || locNot.trim() !== "" || kw.trim() !== "" || scanId !== "";
+  const anyFacet = within != null || sources.size > 0 || sites.size > 0 || seniorities.size > 0 || locQ.trim() !== "" || locNot.trim() !== "" || kw.trim() !== "" || scanId !== "";
   // Keep the batch cap with filters on too: filters sit under the list, so an
   // uncapped match set pushes what the filter did off screen.
   const capped = !showAll;
@@ -241,13 +249,13 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
 
   useEffect(() => {
     setShowAll(false);
-  }, [within, sources, seniorities, locQ, locNot, kw]);
+  }, [within, sources, sites, seniorities, locQ, locNot, kw]);
   // Chip/facet changes only — scrolling on every locQ/kw keystroke pulls the
   // focused text input out of view while the user is still typing.
   useEffect(() => {
-    if (within == null && sources.size === 0 && seniorities.size === 0) return;
+    if (within == null && sources.size === 0 && sites.size === 0 && seniorities.size === 0) return;
     listTopRef.current?.scrollIntoView({ block: "nearest" });
-  }, [within, sources, seniorities]);
+  }, [within, sources, sites, seniorities]);
   useEffect(() => {
     setCursor((index) => (visible.length === 0 ? -1 : index < 0 ? index : Math.min(index, visible.length - 1)));
   }, [visible.length]);
@@ -512,12 +520,15 @@ export function InboxTriage({ inbox, scans = null }: { inbox: InboxJob[]; scans?
         kw={kw}
         setKw={setKw}
         availSources={availSources}
+        availSites={availSites}
+        sites={sites}
+        toggleSite={(s) => setSites((set) => { const next = new Set(set); if (next.has(s)) next.delete(s); else next.add(s); return next; })}
         availSeniorities={availSeniorities}
         allUrls={enriched.map((e) => e.job.url)}
         resultCount={filtered.length}
         totalCount={enriched.filter((e) => !hidden.includes(e.job.url) && !isHidden(e.job.url)).length}
         anyActive={anyFacet}
-        onClear={() => { setWithin(null); setSources(new Set()); setSeniorities(new Set()); setLocQ(""); setLocNot(""); setKw(""); setScanId(""); }}
+        onClear={() => { setWithin(null); setSources(new Set()); setSites(new Set()); setSeniorities(new Set()); setLocQ(""); setLocNot(""); setKw(""); setScanId(""); }}
       />
       <p className="mt-3 text-xs text-faint">j and k move. s saves. x skips. Shift+X skips the checked rows.</p>
       </div>

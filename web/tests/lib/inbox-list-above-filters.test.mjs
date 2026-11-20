@@ -34,6 +34,6 @@ test("a filter keeps the batch cap and a way to see more", () => {
   assert.match(triage, /listTopRef\.current\?\.scrollIntoView/);
   assert.match(triage, /setShowAll\(false\)/);
   // Scroll on chip changes only — not on every locQ/kw keystroke.
-  assert.match(triage, /}, \[within, sources, seniorities\]\);/);
+  assert.match(triage, /}, \[within, sources, sites, seniorities\]\);/);
   assert.doesNotMatch(triage, /}, \[anyFacet, within, sources, seniorities, locQ, kw\]\);/);
 });
