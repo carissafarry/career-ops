@@ -35,7 +35,7 @@ test("the poll log is bounded, newest kept", () => {
   const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "lw-log-")), "polls.tsv");
   for (let i = 0; i < 650; i += 1) appendPollLog(file, { startedAt: `t${i}`, read: 25, kept: 9, added: 0, baseline: false });
   const all = lines(file);
-  assert.equal(all[0], "started_at\tread\tkept\tnew\tbaseline");
+  assert.equal(all[0], "started_at\tread\tkept\tnew\tbaseline\tsearch");
   assert.equal(all.length - 1, 600);
   assert.ok(all.at(-1).startsWith("t649\t"));
   assert.ok(all[1].startsWith("t50\t"));
@@ -64,4 +64,14 @@ test("a poll that is not recorded (stopped, or halted) leaves no history line", 
   applyAction(p, { action: "enable" });
   await ingest(p, { cards: [], page: { ...page, url: "https://www.linkedin.com/authwall" } }, "chrome-extension://abc", at(5)); // halt page
   assert.equal(fs.existsSync(p.pollLogFile), false);
+});
+
+test("a poll records which saved search it read, and an old header gains the column", () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "lw-log-")), "polls.tsv");
+  fs.writeFileSync(file, "started_at\tread\tkept\tnew\tbaseline\nt0\t25\t9\t0\t0\n");
+  appendPollLog(file, { startedAt: "t1", read: 25, kept: 9, added: 1, baseline: false, search: "ceaac499a2d3" });
+  const all = lines(file);
+  assert.equal(all[0], "started_at\tread\tkept\tnew\tbaseline\tsearch");
+  assert.equal(all[1], "t0\t25\t9\t0\t0");
+  assert.equal(all[2], "t1\t25\t9\t1\t0\tceaac499a2d3");
 });

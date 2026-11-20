@@ -26,15 +26,18 @@ function endsWithNewline(file) {
   }
 }
 
-const POLL_HEADER = "started_at\tread\tkept\tnew\tbaseline\n";
+const POLL_HEADER = "started_at\tread\tkept\tnew\tbaseline\tsearch\n";
+const OLD_POLL_HEADER = "started_at\tread\tkept\tnew\tbaseline";
 const POLL_LOG_MAX = 600; // about two days of polls at a 5 minute interval
 
 /** One line per poll (also the ones that found nothing), so /scans can show the watcher's history. */
-export function appendPollLog(file, { startedAt, read, kept, added, baseline }) {
+/** `search` is the key of the saved search that was active (searches.mjs searchKey); older lines have none. */
+export function appendPollLog(file, { startedAt, read, kept, added, baseline, search = "" }) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  const line = [startedAt, read, kept, added, baseline ? 1 : 0].join("\t");
+  const line = [startedAt, read, kept, added, baseline ? 1 : 0, search].join("\t");
   if (!fs.existsSync(file)) return fs.writeFileSync(file, POLL_HEADER + line + "\n");
   const lines = fs.readFileSync(file, "utf8").split("\n").filter(Boolean);
+  if (lines[0] === OLD_POLL_HEADER) lines[0] = POLL_HEADER.trimEnd();
   lines.push(line);
   if (lines.length - 1 > POLL_LOG_MAX) lines.splice(1, lines.length - 1 - POLL_LOG_MAX);
   fs.writeFileSync(file, lines.join("\n") + "\n");

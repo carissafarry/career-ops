@@ -118,7 +118,7 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
                         : "border-border bg-surface shadow-card hover:border-brand/30",
                     )}
                   >
-                    {owners.get(run.id) && <span className="mb-0.5 block truncate text-xs font-medium text-faint">{owners.get(run.id)!.name}</span>}
+                    {(owners.get(run.id)?.name ?? run.searchName) && <span className="mb-0.5 block truncate text-xs font-medium text-faint">{owners.get(run.id)?.name ?? run.searchName}</span>}
                     <span className={cn("block font-semibold", active ? "text-brand-text" : "text-foreground")}>{scanLabel(run)}</span>
                     <span className="mt-0.5 block text-sm text-muted">
                       <span className="font-semibold tabular-nums text-foreground">{run.added}</span> new
@@ -143,10 +143,10 @@ export default async function ScansPage({ searchParams }: { searchParams: Promis
 
           {selected && (
             <section aria-label={scanLabel(selected)} className="min-w-0 rounded-2xl border border-border bg-surface p-5 shadow-card sm:p-6">
-              <h2 className="text-xl font-bold tracking-[-0.01em] text-landing">{selectedOwner ? `${selectedOwner.name} · ${scanLabel(selected)}` : scanLabel(selected)}</h2>
+              <h2 className="text-xl font-bold tracking-[-0.01em] text-landing">{(selectedOwner?.name ?? selected.searchName) ? `${selectedOwner?.name ?? selected.searchName} · ${scanLabel(selected)}` : scanLabel(selected)}</h2>
               <p className="mt-1 text-sm text-muted">
                 {selected.id.startsWith("linkedin-")
-                  ? `One LinkedIn watcher poll: ${selected.found} jobs read from your saved URLs, ${selected.kept ?? 0} match your filters, ${selected.added} of them new (${Math.max((selected.kept ?? 0) - selected.added, 0)} already seen in an earlier poll). The first poll lists everything that matches.`
+                  ? `One LinkedIn watcher poll${selected.searchName ? ` of the saved URL "${selected.searchName}"` : " (polls logged before the watcher recorded its saved URL do not say which one it read)"}: ${selected.found} jobs read, ${selected.kept ?? 0} match your filters, ${selected.added} of them new (${Math.max((selected.kept ?? 0) - selected.added, 0)} already seen in an earlier poll). The first poll lists everything that matches.`
                   : selected.kind === "full"
                   ? "Full ATS sweep across Greenhouse, Lever, Ashby, Workday and more."
                   : `${selected.found.toLocaleString("en-US")} checked, ${selected.filteredTitle.toLocaleString("en-US")} dropped by the title filter, ${selected.dupes.toLocaleString("en-US")} already seen.`}

@@ -11,7 +11,7 @@ import { postedAtMs } from "./posted-age.mjs";
 import { recordPosted } from "./posted-log.mjs";
 import { appendOrigin, appendPollLog, linkedinScanId, originLines, readLastPoll } from "./scan-log.mjs";
 import { readState, writeState, readStatus, writeStatus } from "./store.mjs";
-import { deleteSearch, findSearch, listSearches, saveSearch, switchSearch, updateSearch } from "./searches.mjs";
+import { deleteSearch, findSearch, listSearches, saveSearch, searchKey, switchSearch, updateSearch } from "./searches.mjs";
 
 const CONFIG_KEYS = ["search_url", "interval_minutes", "jitter_percent", "max_polls_per_day", "active_hours", "pages_per_poll", "deep_pages", "max_age_hours", "filters"];
 
@@ -186,7 +186,7 @@ export async function ingest(paths, payload, origin, deps = {}) {
     try {
       appendPollLog(paths.pollLogFile, {
         startedAt: nowIso, read: out.status.lastCardCount ?? 0, kept: out.status.lastKeptCount ?? 0,
-        added: listed.length, baseline,
+        added: listed.length, baseline, search: searchKey(cfg.searchUrl ?? ""),
       });
     } catch (e) {
       console.error("linkedin-watch: could not write the poll log:", e.message);

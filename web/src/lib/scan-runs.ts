@@ -2,6 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { careerOpsRoot } from "@/lib/career-ops";
 import { buildScanRuns, scanIdByUrl } from "@/lib/scan-runs-core.mjs";
+import { readSearches } from "@/lib/linkedin-watch/searches.mjs";
+import { watchPaths } from "@/lib/linkedin-watch/store.mjs";
 
 export type ScanPosting = { url: string; company: string; role: string; location: string; firstSeen: string; postedAt?: string };
 export type ScanRun = {
@@ -14,6 +16,9 @@ export type ScanRun = {
   dupes: number;
   /** LinkedIn watcher polls only: how many of the `found` jobs matched the user's filters. */
   kept?: number;
+  /** LinkedIn watcher polls only: the saved search this poll read. `search` is its key (empty on polls logged before it was recorded); `searchName` is filled in when that search is still saved. */
+  search?: string;
+  searchName?: string;
   postings: ScanPosting[];
 };
 /** What the pipeline's scan selector needs: no postings, just the label data. */
@@ -33,13 +38,16 @@ function readData(rel: string): string {
 
 /** Every scan run, newest first. Missing files read as empty. */
 export function readScanRuns(): ScanRun[] {
-  return buildScanRuns({
+  const names = new Map<string, string>(readSearches(watchPaths(careerOpsRoot())).map((s: { id: string; name: string }) => [s.id, s.name]));
+  const runs = buildScanRuns({
     runsTsv: readData("data/scan-runs.tsv"),
     historyTsv: readData("data/scan-history.tsv"),
     originTsv: readData("data/scan-origin.tsv"),
     postingsTsv: readData("data/scan-run-postings.tsv"),
     linkedinPollsTsv: readData("data/linkedin-watch-polls.tsv"),
   }) as ScanRun[];
+  // A poll names the search it read by key; the name is whatever that search is saved as now.
+  return runs.map((run) => (run.search ? { ...run, searchName: names.get(run.search) ?? "Unsaved search" } : run));
 }
 
 export function scanSelectorData(

@@ -101,3 +101,12 @@ test("empty inputs give no runs, and scanIdByUrl maps every posting", () => {
   assert.equal(map["https://b/1"], "2026-11-17T07:37:46.780Z");
   assert.equal(map["https://a/1"], "2026-11-17T07:32:55.517Z");
 });
+
+test("a poll carries the key of the saved search it read; an older poll has none", () => {
+  const runs = buildScanRuns({
+    linkedinPollsTsv: "started_at\tread\tkept\tnew\tbaseline\tsearch\n2026-11-20T08:46:26.277Z\t29\t5\t1\t0\tceaac499a2d3\n2026-11-20T08:41:18.214Z\t28\t4\t0\t0\n",
+  });
+  const byId = Object.fromEntries(runs.map((r) => [r.id, r]));
+  assert.equal(byId["linkedin-2026-11-20T08:46:26.277Z"].search, "ceaac499a2d3");
+  assert.equal(byId["linkedin-2026-11-20T08:41:18.214Z"].search, "");
+});

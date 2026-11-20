@@ -127,10 +127,11 @@ export function buildScanRuns({ runsTsv = "", historyTsv = "", originTsv = "", p
   // The LinkedIn watcher logs every poll in data/linkedin-watch-polls.tsv (read, kept by the filters, listed).
   // A poll that listed roles already has a run from scan-origin.tsv (same id); one that found nothing gets an empty run.
   for (const cols of toRows(linkedinPollsTsv)) {
-    const [startedAt, read, kept, added] = cols;
+    const [startedAt, read, kept, added, , search = ""] = cols;
     if (!startedAt || startedAt === "started_at") continue;
     const id = `linkedin-${startedAt}`;
-    const counts = { found: Number.parseInt(read, 10) || 0, kept: Number.parseInt(kept, 10) || 0 };
+    // `search` is the key of the saved search this poll read; polls logged before it was recorded have none.
+    const counts = { found: Number.parseInt(read, 10) || 0, kept: Number.parseInt(kept, 10) || 0, search };
     const existing = fullById.get(id);
     if (existing) Object.assign(existing, counts);
     else fullById.set(id, { id, kind: "full", startedAt, filteredTitle: 0, dupes: 0, added: Number.parseInt(added, 10) || 0, postings: [], ...counts });
