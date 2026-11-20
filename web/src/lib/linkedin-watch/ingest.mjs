@@ -28,6 +28,13 @@ function cleanDiag(d) {
   };
 }
 
+// The page that added nothing new when reading stopped: where it landed and how many jobs it showed.
+function cleanStopDiag(d) {
+  const clean = cleanDiag(d);
+  if (!clean) return null;
+  return { ...clean, page: Number.isInteger(d.page) && d.page > 0 ? d.page : null };
+}
+
 export function handleIngest({ payload, cfg, state, status, now, random, notify, keep = null }) {
   const nowIso = now.toISOString();
   const manual = Boolean(status.runNowRequestedAt);
@@ -82,6 +89,7 @@ export function handleIngest({ payload, cfg, state, status, now, random, notify,
       stop: typeof payload.stop === "string" ? payload.stop.slice(0, 40) : null,
       pager: Array.isArray(payload.pager) ? payload.pager.slice(0, 12).map((t) => String(t).slice(0, 30)) : [],
       diag: cleanDiag(payload.diag),
+      stopDiag: cleanStopDiag(payload.stopDiag),
     },
     lastKeptCount: keep ? cards.filter(keep).length : cards.length,
     lastNewCount: result.baselineSaved ? 0 : result.newPostings.length,

@@ -13,7 +13,7 @@ type Posting = {
 };
 type Status = {
   state: "running" | "stopped" | "halted"; haltReason: string | null; lastHeartbeatAt: string | null;
-  lastPollAt: string | null; nextPollAt: string | null; newToday: number; runNowRequestedAt?: string | null; lastCardCount?: number; lastKeptCount?: number; lastNewCount?: number | null; lastPages?: number; lastRead?: { requested: number; version: string | null; stop: string | null; pager: string[] } | null; lastBaseline?: boolean; filterError?: string | null;
+  lastPollAt: string | null; nextPollAt: string | null; newToday: number; runNowRequestedAt?: string | null; lastCardCount?: number; lastKeptCount?: number; lastNewCount?: number | null; lastPages?: number; lastRead?: { requested: number; version: string | null; stop: string | null; pager: string[]; stopDiag?: { page: number | null; urlAfter: string | null; cardsNow: number | null } | null } | null; lastBaseline?: boolean; filterError?: string | null;
 };
 type LastPoll = { startedAt: string; read: number; kept: number; added: number; baseline: boolean };
 type Overview = { config: Record<string, unknown>; status: Status; postings: Posting[]; baselineAt: string | null; knownCount: number; lastPoll: LastPoll | null; searches?: SavedSearch[] };
@@ -314,7 +314,9 @@ export function LinkedInWatchView() {
     } else if (read.stop === "last-page") {
       notices.push({ tone: "info", title: `Reached the last page (${gotPages} ${gotPages === 1 ? "page" : "pages"})`, body: `That page was not full (or had no Next button), so your search has no more pages. Your settings allow up to ${read.requested}.` });
     } else if (read.stop === "no-new-cards") {
-      notices.push({ tone: "warn", title, body: `Page ${gotPages + 1} showed no job that had not already been read, so reading stopped. LinkedIn may have shown the same page again.` });
+      const d = read.stopDiag;
+      const detail = d ? ` Page ${d.page ?? gotPages + 1} loaded as ${d.urlAfter ?? "an unknown address"} and showed ${d.cardsNow ?? "?"} jobs.` : "";
+      notices.push({ tone: "warn", title, body: `Page ${gotPages + 1} showed no job that had not already been read, so reading stopped. LinkedIn may have shown the same page again.${detail}` });
     } else if (read.stop === "no-cards") {
       notices.push({ tone: "warn", title, body: "No jobs could be read on the page, so no further page was loaded." });
     } else if (read.stop === "left-results") {

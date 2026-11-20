@@ -52,5 +52,5 @@ test("the posted-time pattern ignores lines that are not an age", () => {
 });
 
 test("the manifest version moves with the content script change", () => {
-  assert.equal(manifest.version, "0.5.3");
+  assert.equal(manifest.version, "0.5.4");
 });

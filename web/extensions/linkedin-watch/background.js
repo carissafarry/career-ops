@@ -91,7 +91,13 @@ async function readAllPages(tabId, searchUrl, pages) {
     result.page = next.page; // the last page seen is what the app checks for a login wall or checkpoint
     if (!onResults(next.page.url)) { stop = "left-results"; break; }
     const fresh = next.cards.filter((c) => !seen.has(c.jobId));
-    if (fresh.length === 0) { stop = "no-new-cards"; break; }
+    if (fresh.length === 0) {
+      stop = "no-new-cards";
+      // What the page that added nothing looked like (its URL after loading, how many jobs it showed),
+      // because `result.diag` still describes page 1.
+      result.stopDiag = { ...next.diag, page: index + 1 };
+      break;
+    }
     for (const c of fresh) seen.add(c.jobId);
     result.cards.push(...fresh);
     result.pages = index + 1;

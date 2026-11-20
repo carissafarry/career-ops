@@ -122,13 +122,13 @@ test("with a filter, new counts only matching postings while the match count cov
 
 test("the status records what the extension reported about paging, and how many pages were asked for", () => {
   const first = run({ state: emptyState(), payload: { cards: [raw(1)], page: OK_PAGE, pages: 1, stop: "no-next-button", pager: ["Page 1", "Page 2", "Next"], version: "0.4.1" } });
-  assert.deepEqual(first.status.lastRead, { requested: cfg.deepPages, version: "0.4.1", stop: "no-next-button", pager: ["Page 1", "Page 2", "Next"], diag: null });
+  assert.deepEqual(first.status.lastRead, { requested: cfg.deepPages, version: "0.4.1", stop: "no-next-button", pager: ["Page 1", "Page 2", "Next"], diag: null, stopDiag: null });
   const later = run({ payload: { cards: [raw(1), raw(2)], page: OK_PAGE } }); // an old extension reports nothing
-  assert.deepEqual(later.status.lastRead, { requested: cfg.pagesPerPoll, version: null, stop: null, pager: [], diag: null });
+  assert.deepEqual(later.status.lastRead, { requested: cfg.pagesPerPoll, version: null, stop: null, pager: [], diag: null, stopDiag: null });
   const manual = run({ status: { ...running(), runNowRequestedAt: NOW.toISOString() } });
   assert.equal(manual.status.lastRead.requested, cfg.deepPages);
   const junk = run({ payload: { cards: [raw(1)], page: OK_PAGE, version: 5, stop: {}, pager: "Next" } });
-  assert.deepEqual(junk.status.lastRead, { requested: cfg.pagesPerPoll, version: null, stop: null, pager: [], diag: null });
+  assert.deepEqual(junk.status.lastRead, { requested: cfg.pagesPerPoll, version: null, stop: null, pager: [], diag: null, stopDiag: null });
 });
 
 test("page diagnostics are kept, trimmed to short strings", () => {
@@ -138,6 +138,13 @@ test("page diagnostics are kept, trimmed to short strings", () => {
   assert.equal(d.urlAfter.length, 200);
   assert.deepEqual([d.visibility, d.focused, d.cardsNow], ["hidden", false, 25]);
   assert.ok(!("extra" in d));
+});
+
+test("the page that added nothing is kept with its number, where it landed and how many jobs it showed", () => {
+  const stopDiag = { visibility: "hidden", focused: false, urlAfter: "/jobs/search-results/?start=25", cardsNow: 25, page: 2, extra: "ignored" };
+  const r = run({ payload: { cards: [raw(1)], page: OK_PAGE, version: "0.5.4", stop: "no-new-cards", pager: ["Page 1", "Next"], stopDiag } });
+  assert.deepEqual(r.status.lastRead.stopDiag, { visibility: "hidden", focused: false, urlAfter: "/jobs/search-results/?start=25", cardsNow: 25, page: 2 });
+  assert.equal(run({ payload: { cards: [raw(1)], page: OK_PAGE, stopDiag: { page: "2" } } }).status.lastRead.stopDiag.page, null);
 });
 
 test("a poll skipped for active hours still records when the next one is planned", () => {
