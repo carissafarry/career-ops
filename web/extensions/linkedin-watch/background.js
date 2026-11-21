@@ -83,6 +83,8 @@ async function readAllPages(tabId, searchUrl, pages) {
   let stop = pages <= 1 ? "one-page-asked" : "reached-limit";
   for (let index = 1; index < pages; index += 1) {
     if (last.cards.length === 0) { stop = "no-cards"; break; }
+    // A page holding fewer than 25 jobs is the last one, even when Next still looks enabled.
+    if (last.cards.length < PAGE_SIZE) { stop = "last-page"; break; }
     if (last.hasNext !== true) { stop = "last-page"; break; }
     await sleep(2_000 + Math.random() * 2_000);
     await chrome.tabs.update(tabId, { url: pageUrl(searchUrl, index) });

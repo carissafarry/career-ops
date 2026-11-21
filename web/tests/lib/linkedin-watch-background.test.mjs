@@ -95,6 +95,12 @@ test("a page with fewer than 25 jobs is the last one: no further page is loaded"
   assert.deepEqual(h.visited.map((u) => new URL(u).searchParams.get("start")), ["25"]); // start=50 is never requested
 });
 
+test("a first page with fewer than 25 jobs is the last one: page 2 is never loaded", async () => {
+  const h = harness({ results: { 0: { cards: range(1, 18), hasNext: true } } });
+  const out = await h.read(3);
+  assert.deepEqual([out.pages, out.cards.length, out.stop, h.visited.length], [1, 18, "last-page", 0]);
+});
+
 // ---- following the planned next poll when the interval is changed
 function bootHarness({ alarm, config }) {
   const calls = { created: [] };

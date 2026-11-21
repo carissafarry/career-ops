@@ -309,10 +309,14 @@ export function LinkedInWatchView() {
   const gotPages = status?.lastPages ?? 1;
   if (status?.lastPollAt && read && gotPages < read.requested) {
     const title = `Only ${gotPages} of ${read.requested} pages were read`;
-    if (read.version === null) {
+    if (read.version === null && (status.lastCardCount ?? 0) === 0) {
+      // No cards and no answer from the page script: usually LinkedIn never loaded (no internet, a DNS error, a login page,
+      // a closed window), so this must not blame the extension's version.
+      notices.push({ tone: "warn", title, body: "The LinkedIn page did not answer and no jobs were read. LinkedIn may not have loaded: check your internet connection, and that your saved URL opens normally in Chrome (not a login page or an error page). If it opens fine, click Reload on the LinkedIn watcher at chrome://extensions, then press Run now. This message goes away after a poll that reads jobs." });
+    } else if (read.version === null) {
       notices.push({ tone: "warn", title, body: "The extension sent no page information, so it is most likely still an old version. Open chrome://extensions, click Reload on the LinkedIn watcher, and check that its version says 0.4.1 or newer." });
-    } else if (read.stop === "last-page") {
-      notices.push({ tone: "info", title: `Reached the last page (${gotPages} ${gotPages === 1 ? "page" : "pages"})`, body: `That page was not full (or had no Next button), so your search has no more pages. Your settings allow up to ${read.requested}.` });
+    } else if (read.stop === "last-page" || (read.stop === "no-new-cards" && (read.stopDiag?.cardsNow === 0 || (status.lastCardCount ?? 0) < 25 * gotPages))) {
+      // A short page, or a next page with no jobs on it, is just the end of the results: nothing to tell.
     } else if (read.stop === "no-new-cards") {
       const d = read.stopDiag;
       const detail = d ? ` Page ${d.page ?? gotPages + 1} loaded as ${d.urlAfter ?? "an unknown address"} and showed ${d.cardsNow ?? "?"} jobs.` : "";
