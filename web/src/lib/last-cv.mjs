@@ -1,12 +1,16 @@
 /**
  * last-cv.mjs — the most recently generated tailored CV, whichever job it was for.
  *
- * Generated CVs are kept in output/ as cv-{candidate}-{report}-{company}-{date}.pdf.
- * The newest one by modification time is the "last generated CV". Plain .mjs so it
- * can be tested directly under node --test.
+ * Generated CVs are kept in output/ as cv-{candidate}-{report}-{company}-{date}.pdf (the web's
+ * own layout) or, when the CLI wrote them, {NNN}-{company}-cv-{candidate}-{date}.pdf (the
+ * #6667 standard, lib/output-names.mjs). The newest one by modification time is the "last
+ * generated CV". Plain .mjs so it can be tested directly under node --test.
  */
 import fs from "node:fs";
 import path from "node:path";
+import { standardKind } from "./apply/cv-match.mjs";
+
+const isCvPdf = (name) => /\.pdf$/i.test(name) && (/^cv-.+\.pdf$/i.test(name) || standardKind(name.toLowerCase(), "") === "cv");
 
 /**
  * @param {string} outputDir
@@ -21,7 +25,7 @@ export function findLastCv(outputDir) {
   }
   let best = null;
   for (const name of names) {
-    if (!/^cv-.+\.pdf$/i.test(name)) continue;
+    if (!isCvPdf(name)) continue;
     const file = path.join(outputDir, name);
     try {
       const stat = fs.lstatSync(file);
