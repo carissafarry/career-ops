@@ -124,7 +124,8 @@ async function poll() {
     const res = await fetch(`${APP}/api/linkedin-watch/ingest`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      // The URL this poll actually read: the app drops the result if the saved search changed meanwhile.
+      body: JSON.stringify({ ...payload, searchUrl: cfg.searchUrl }),
       signal: AbortSignal.timeout(20_000),
     });
     const reply = await res.json();

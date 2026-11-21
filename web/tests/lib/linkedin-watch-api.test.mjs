@@ -90,6 +90,24 @@ test("a poll's postings are logged as one scan in scan-origin.tsv, once", async 
   assert.ok(readState(p).postings.every((x) => x.scanId));
 });
 
+test("a poll read from another saved URL is dropped, not added to the active search", async () => {
+  const p = paths();
+  applyAction(p, { action: "save-config", search_url: URL_OK });
+  applyAction(p, { action: "enable" });
+  const raw = (id) => ({ jobId: String(id), title: `Job ${id}`, company: "Co", location: "Singapore", posted: "" });
+  const page = { url: URL_OK, title: "Jobs", bodyText: "x", status: 200 };
+  const at = { now: new Date(Date.UTC(2026, 10, 21, 0, 12)), random: () => 0.5, notify: () => {} };
+  const other = "https://www.linkedin.com/jobs/search/?keywords=sea&f_TPR=r86400";
+  const dropped = await ingest(p, { cards: [raw(1), raw(2)], page, searchUrl: other }, "chrome-extension://abc", at);
+  assert.equal(dropped.body.enabled, true);
+  assert.equal(readState(p).postings.length, 0);
+  assert.equal(fs.existsSync(p.pollLogFile), false); // not recorded as a poll of the active search
+  await ingest(p, { cards: [raw(1), raw(2)], page, searchUrl: URL_OK }, "chrome-extension://abc", at);
+  assert.equal(readState(p).postings.length, 2); // the active URL still ingests
+  await ingest(p, { cards: [raw(3)], page }, "chrome-extension://abc", { ...at, now: new Date(Date.UTC(2026, 10, 21, 0, 20)) });
+  assert.equal(readState(p).postings.length, 3); // an older extension sends no URL: still accepted
+});
+
 test("save-config keeps filters; a bad filters shape is a 400", () => {
   const p = paths();
   const filters = { positive: [" Backend Engineer ", "Backend Engineer", ""], negative: ["Senior"], blockHard: ["India"] };

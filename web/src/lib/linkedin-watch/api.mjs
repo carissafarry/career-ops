@@ -133,6 +133,8 @@ export function applyAction(paths, body, deps = {}) {
   return { status: 400, body: { error: "Unknown action." } };
 }
 
+const STALE_POLL_RETRY_MS = 60_000;
+
 function validPayload(p) {
   return p && Array.isArray(p.cards) && p.page && typeof p.page.url === "string"
     && typeof p.page.title === "string" && typeof p.page.bodyText === "string" && typeof p.page.status === "number";
@@ -143,6 +145,12 @@ export async function ingest(paths, payload, origin, deps = {}) {
   if (!validPayload(payload)) return { status: 400, body: { error: "Bad payload." } };
   const cfg = loadConfig(paths);
   if (!cfg) return { status: 200, body: { enabled: false, nextDelayMs: 0, searchUrl: null } };
+  // The poll read a different saved URL than the one active now (it was switched while the poll ran): its
+  // jobs belong to that other search, so they are dropped instead of landing in this search's list.
+  if (typeof payload.searchUrl === "string" && searchKey(payload.searchUrl) !== searchKey(cfg.searchUrl ?? "")) {
+    console.error("linkedin-watch: dropped a poll read from another saved URL");
+    return { status: 200, body: { enabled: true, nextDelayMs: STALE_POLL_RETRY_MS, searchUrl: cfg.searchUrl } };
+  }
   // A filter that cannot be built fails open (keep everything) and is reported, so jobs are never hidden silently.
   let keep = null;
   let filterError = null;
