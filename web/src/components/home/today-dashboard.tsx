@@ -37,6 +37,7 @@ export function TodayDashboard({
   legitimacy,
   inbox,
   applyFacts = {},
+  applyDay,
 }: {
   applications: Application[];
   reasons: Record<string, CardReason>;
@@ -45,6 +46,8 @@ export function TodayDashboard({
   inbox: Pick<InboxJob, "url" | "done">[];
   inBetween: boolean;
   applyFacts?: Record<string, { pdfOnDisk: boolean; postingUrl: string }>;
+  /** Server calendar day. Apply next does not read the browser clock. */
+  applyDay: string;
 }) {
   const [followups, setFollowups] = useState<FollowUp[]>([]);
   const [overdue, setOverdue] = useState(0);
@@ -149,8 +152,9 @@ export function TodayDashboard({
       scoreNum,
       (row) => reasons[row.n]?.decision ?? "",
       (row) => legitimacy[row.n],
+      applyDay,
     ),
-    [applications, reasons, legitimacy],
+    [applications, reasons, legitimacy, applyDay],
   );
   const awaiting = useMemo(() => includeApplyTarget(ranked, applyTarget), [ranked, applyTarget]);
   // With the legitimacy, a flagged posting is grouped as the report page
