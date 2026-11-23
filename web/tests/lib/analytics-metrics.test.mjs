@@ -17,7 +17,7 @@ const app = (status, score = "4.0/5", date = "2026-09-18", extra = {}) => ({ sta
 test("SKIP belongs to Tracked inventory, not active or advanced funnel stages", () => {
   const before = computeProgressMetrics([app("Applied")]);
   const after = computeProgressMetrics([app("Applied"), app("SKIP")]);
-  assert.deepEqual(after.funnel.map(stage => stage.count), [2, 1, 0, 0, 0]);
+  assert.deepEqual(after.funnel.map(stage => stage.count), [2, 1, 0, 0, 0, 0]);
   assert.equal(after.tracked, before.tracked + 1);
   assert.equal(after.funnel[1].pct, 50);
   assert.equal(after.activeApps, before.activeApps);
@@ -43,7 +43,7 @@ test("a measured zero still prints — the gate reads the denominator, not the r
 
 test("core ledger achievements survive the Analytics view refactor", () => {
   const metrics = computeProgressMetrics([app("Rejected")], { interviews: 1, offers: 1 });
-  assert.deepEqual(metrics.funnel.map(stage => stage.count), [1, 1, 1, 1, 1]);
+  assert.deepEqual(metrics.funnel.map(stage => stage.count), [1, 1, 0, 1, 1, 1]);
   assert.equal(metrics.interviewRate, 100);
   assert.equal(metrics.offerRate, 100);
 });
@@ -55,9 +55,9 @@ test("progress preserves core history for rejected and discarded rows", async ()
   const history = "1\t2026-09-01\tInterview\tRejected\n2\t2026-09-01\tOffer\tDiscarded\n3\t2026-09-01\tOffer\tSKIP";
   const achievements = await cumulativeProgressWithHistory(applications, history,
     fileURLToPath(new URL("../../../", import.meta.url)));
-  assert.deepEqual(achievements, { applied: 2, responded: 2, interviews: 2, offers: 1 });
+  assert.deepEqual(achievements, { applied: 2, viewed: 2, responded: 2, interviews: 2, offers: 1 });
   const metrics = computeProgressMetrics(applications, achievements);
-  assert.deepEqual(metrics.funnel.map(stage => stage.count), [3, 2, 2, 2, 1]);
+  assert.deepEqual(metrics.funnel.map(stage => stage.count), [3, 2, 2, 2, 2, 1]);
   assert.equal(metrics.totalOffers, 1);
 });
 
@@ -67,8 +67,8 @@ test("Assessment history never becomes an interview or offer after rebasing main
   const history = "4\t2026-10-01\tAssessment\tDiscarded\n5\t2026-10-01\tOffer\tRejected\n6\t2026-10-01\tOffer\tSKIP";
   const achievements = await cumulativeProgressWithHistory(applications, history,
     fileURLToPath(new URL("../../../", import.meta.url)));
-  assert.deepEqual(achievements, { applied: 5, responded: 5, interviews: 3, offers: 2 });
-  assert.deepEqual(computeProgressMetrics(applications, achievements).funnel.map(stage => stage.count), [6, 5, 5, 3, 2]);
+  assert.deepEqual(achievements, { applied: 5, viewed: 5, responded: 5, interviews: 3, offers: 2 });
+  assert.deepEqual(computeProgressMetrics(applications, achievements).funnel.map(stage => stage.count), [6, 5, 5, 5, 3, 2]);
 });
 
 test("one view resolver selects all three views and defaults unknown values", () => {
@@ -91,10 +91,11 @@ test("progress uses cumulative funnel semantics, including hired and rejected", 
     app("Rejected", "N/A"),
   ]);
 
-  assert.deepEqual(metrics.funnel.map((stage) => stage.count), [6, 6, 5, 3, 2]);
-  assert.deepEqual(metrics.funnel.map((stage) => stage.label), ["Tracked", "Applied", "Responded", "Interview", "Offer"]);
+  assert.deepEqual(metrics.funnel.map((stage) => stage.count), [6, 6, 4, 5, 3, 2]);
+  assert.deepEqual(metrics.funnel.map((stage) => stage.label), ["Tracked", "Applied", "Viewed", "Responded", "Interview", "Offer"]);
   assert.equal(metrics.funnel[1].pct, 100);
-  assert.equal(metrics.funnel[2].pct, (5 / 6) * 100);
+  assert.equal(metrics.funnel[2].pct, (4 / 6) * 100); // Viewed: a Rejected row is a reply, not proof it was opened
+  assert.equal(metrics.funnel[3].pct, (5 / 6) * 100);
   assert.equal(metrics.activeApps, 4);
   assert.equal(metrics.totalOffers, 2);
   assert.equal(metrics.responseRate, (5 / 6) * 100);

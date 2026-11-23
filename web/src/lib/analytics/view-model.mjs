@@ -83,6 +83,7 @@ export function progressModel(stats) {
   // order so a later stage can never appear larger than an earlier one.
   const stages = [
     { key: "everApplied", label: "Applied", value: n(funnel.everApplied) },
+    { key: "everViewed", label: "Viewed", value: n(funnel.everViewed) },
     { key: "everResponded", label: "Responded", value: n(funnel.everResponded) },
     { key: "everInterview", label: "Interviewed", value: n(funnel.everInterview) },
     { key: "everOffer", label: "Offers", value: n(funnel.everOffer) },

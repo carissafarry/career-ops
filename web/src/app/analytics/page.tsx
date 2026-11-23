@@ -8,6 +8,7 @@ import { computeProgressMetrics, computeStatsMetrics, generateInsights, resolveA
 import { AnalyticsShell, ProgressPanel, StatsPanel } from "@/components/analytics-view";
 import { FunnelRates } from "@/components/analytics/funnel-rates";
 import { SearchInsights } from "@/components/analytics/search-insights";
+import { ViewedOutcomes } from "@/components/analytics/viewed-outcomes";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,7 @@ async function ProgressView({ applications }: { applications: Application[] }) {
       <ProgressPanel metrics={computeProgressMetrics(applications, achievements)} skipped={skippedSummary(readInbox(applications), applications)} />
       <PipelineSankey applications={applications} statusLog={readStatusLog()} />
       <FunnelRates />
+      <ViewedOutcomes applications={applications} statusLog={readStatusLog()} />
     </>
   );
 }

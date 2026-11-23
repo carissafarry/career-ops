@@ -3,7 +3,7 @@ import { canonStatus } from "./status-alias.mjs";
 // Progress view rather than copied: web/src/lib/analytics/view-model.mjs.
 import { rateOrNull } from "./analytics/view-model.mjs";
 
-const STAGE_ORDER = ["TRACKED", "APPLIED", "RESPONDED", "INTERVIEW", "OFFER"];
+const STAGE_ORDER = ["TRACKED", "APPLIED", "VIEWED", "RESPONDED", "INTERVIEW", "OFFER"];
 const SCORE_BUCKETS = [
   { label: "4.5–5.0", min: 4.5, max: Infinity },
   { label: "4.0–4.4", min: 4, max: 4.5 },
@@ -66,12 +66,14 @@ export function computeProgressMetrics(applications = [], achievements) {
   // this denominator into an eligible-to-apply subset.
   const tracked = apps.length;
   const applied = achievements?.applied ?? count("APPLIED") + count("VIEWED") + count("RESPONDED") + count("ASSESSMENT") + count("INTERVIEW") + count("OFFER") + count("HIRED") + count("REJECTED");
+  // Opened by the employer: Viewed, or past Responded. A Rejected row is a reply, not proof it was opened.
+  const viewed = achievements?.viewed ?? count("VIEWED") + count("RESPONDED") + count("ASSESSMENT") + count("INTERVIEW") + count("OFFER") + count("HIRED");
   const responded = achievements?.responded ?? count("RESPONDED") + count("ASSESSMENT") + count("INTERVIEW") + count("OFFER") + count("HIRED") + count("REJECTED");
   // Upstream's ledger-aware core helper recovers prior interview/offer stages
   // for applications that are now rejected or discarded.
   const interview = achievements?.interviews ?? count("INTERVIEW") + count("OFFER") + count("HIRED");
   const offer = achievements?.offers ?? count("OFFER") + count("HIRED");
-  const funnelCounts = [tracked, applied, responded, interview, offer];
+  const funnelCounts = [tracked, applied, viewed, responded, interview, offer];
 
   const funnel = STAGE_ORDER.map((label, index) => {
     const stageCount = funnelCounts[index];

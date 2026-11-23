@@ -27,13 +27,13 @@ test("a rate over nothing is absent, not zero", () => {
 test("progress model mirrors the core's cumulative funnel, in order", () => {
   const m = progressModel({
     tracker: { total: 9, activeApps: 3, avgScore: 4.4, topScore: 4.9 },
-    funnel: { everApplied: 4, everResponded: 2, everInterview: 2, everOffer: 1, responseRate: 50, interviewRate: 50, offerRate: 25, smallSample: true },
+    funnel: { everApplied: 4, everViewed: 3, everResponded: 2, everInterview: 2, everOffer: 1, responseRate: 50, interviewRate: 50, offerRate: 25, smallSample: true },
   });
   assert.equal(m.available, true);
-  assert.deepEqual(m.funnel.stages.map((s) => s.value), [4, 2, 2, 1]);
+  assert.deepEqual(m.funnel.stages.map((s) => s.value), [4, 3, 2, 2, 1]);
   // Lifecycle order, so a later stage can never render larger than an earlier
   // one — the nesting stats.mjs guarantees is visible in the shape.
-  assert.deepEqual(m.funnel.stages.map((s) => s.key), ["everApplied", "everResponded", "everInterview", "everOffer"]);
+  assert.deepEqual(m.funnel.stages.map((s) => s.key), ["everApplied", "everViewed", "everResponded", "everInterview", "everOffer"]);
   assert.deepEqual(m.funnel.rates.map((r) => r.value), [50, 50, 25]);
   assert.equal(m.provisional, true, "smallSample must carry through to the view");
 });

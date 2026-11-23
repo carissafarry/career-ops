@@ -60,26 +60,28 @@ async function recoveredStages(applications, content, coreRoot) {
   // the core at runtime, as the other core accessors do; do not widen its root
   // or silently substitute a second engine if the installation is incomplete.
   const file = path.join(coreRoot, 'funnel-stages.mjs');
-  const { parseStatusLogStages, recoverFunnelStages } = await import(/* webpackIgnore: true */ pathToFileURL(file).href);
+  const { parseStatusLogStages, recoverFunnelStages, recoverViewedStages } = await import(/* webpackIgnore: true */ pathToFileURL(file).href);
   const statuses = new Map();
   for (const app of applications) {
     // Non-numeric backfill IDs retain snapshot counts but cannot join history.
     const id = /^\d+$/.test(app.n) ? Number(app.n) : Symbol();
     statuses.set(id, statusToken(app.status));
   }
-  return [...recoverFunnelStages(statuses, parseStatusLogStages(content)).values()];
+  const ledger = parseStatusLogStages(content);
+  return { values: [...recoverFunnelStages(statuses, ledger).values()], viewed: recoverViewedStages(statuses, ledger).size };
 }
 
 export async function cumulativeTilesWithHistory(applications, content, coreRoot = resolveCodeRoot(process.cwd())) {
-  const values = await recoveredStages(applications, content, coreRoot);
+  const { values } = await recoveredStages(applications, content, coreRoot);
   return { interviews: values.filter(n => n >= 4).length, offers: values.filter(n => n >= 5).length };
 }
 
 /** All progress stages use the same core history contract as the headline tiles. */
 export async function cumulativeProgressWithHistory(applications, content, coreRoot = resolveCodeRoot(process.cwd())) {
-  const values = await recoveredStages(applications, content, coreRoot);
+  const { values, viewed } = await recoveredStages(applications, content, coreRoot);
   return {
     applied: values.filter(n => n >= 1).length,
+    viewed,
     responded: values.filter(n => n >= 2).length,
     interviews: values.filter(n => n >= 4).length,
     offers: values.filter(n => n >= 5).length,

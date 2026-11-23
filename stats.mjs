@@ -28,7 +28,7 @@ import { resolveColumns, parseTrackerRow } from './tracker-parse.mjs';
 import { normalizeStatus, analyzeFromContent, loadFollowupsEnabled } from './followup-cadence.mjs';
 import { getCareerOpsRoot, resolveTrackerPath } from './path-resolver.mjs';
 import { isMainModule } from './lib/is-main-module.mjs';
-import { parseStatusLogStages, recoverFunnelStages } from './funnel-stages.mjs';
+import { parseStatusLogStages, recoverFunnelStages, recoverViewedStages } from './funnel-stages.mjs';
 export { parseStatusLogStages } from './funnel-stages.mjs';
 import { parseScanHistoryLine } from './lib/scan-history-columns.mjs';
 
@@ -169,10 +169,14 @@ export function computeFunnel(byStatus) {
   const n = (k) => byStatus[k] || 0;
   const everApplied = n('Applied') + n('Viewed') + n('Responded') + n('Assessment') + n('Interview') + n('Offer') + n('Hired') + n('Rejected');
   const everResponded = n('Responded') + n('Assessment') + n('Interview') + n('Offer') + n('Hired') + n('Rejected');
+  // Opened by the employer: Viewed, or past Responded. A Rejected row proves a reply, not a view, so everViewed can be
+  // below everResponded (see recoverViewedStages in funnel-stages.mjs).
+  const everViewed = n('Viewed') + n('Responded') + n('Assessment') + n('Interview') + n('Offer') + n('Hired');
   const everInterview = n('Interview') + n('Offer') + n('Hired');
   const everOffer = n('Offer') + n('Hired');
   return {
     everApplied,
+    everViewed,
     everResponded,
     everInterview,
     everOffer,
@@ -201,6 +205,7 @@ export function computeFunnel(byStatus) {
  */
 export function computeFunnelWithHistory(statusByNum, ledger) {
   const reached = recoverFunnelStages(statusByNum, ledger);
+  const everViewed = recoverViewedStages(statusByNum, ledger).size;
   let everApplied = 0, everResponded = 0, everInterview = 0, everOffer = 0;
   for (const rank of reached.values()) {
     if (rank >= 1) everApplied++;
@@ -210,6 +215,7 @@ export function computeFunnelWithHistory(statusByNum, ledger) {
   }
   return {
     everApplied,
+    everViewed,
     everResponded,
     everInterview,
     everOffer,

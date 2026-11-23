@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
 import { pass, fail } from './helpers.mjs';
-import { computeFunnel } from '../stats.mjs';
+import { computeFunnel, computeFunnelWithHistory } from '../stats.mjs';
 import { computeUrgency } from '../followup-cadence.mjs';
 
 const read = (file) => readFileSync(new URL(`../${file}`, import.meta.url), 'utf-8');
@@ -42,4 +42,21 @@ if (computeUrgency('viewed', 30, null, 0) === computeUrgency('applied', 30, null
   pass('follow-up cadence treats Viewed like Applied');
 } else {
   fail('follow-up cadence treats Viewed differently from Applied');
+}
+
+// The ledger-aware funnel ranks Viewed between Applied and Responded, so a Viewed row is applied
+// and viewed, never responded, and a Responded row that passed through Viewed counts as viewed.
+const hist = computeFunnelWithHistory(new Map([[1, 'Viewed'], [2, 'Responded'], [3, 'Applied']]), [{ num: 2, from: 'Viewed', to: 'Responded' }]);
+if (hist.everApplied === 3 && hist.everViewed === 2 && hist.everResponded === 1) {
+  pass('ledger funnel ranks Viewed between Applied and Responded');
+} else {
+  fail(`ledger funnel: everApplied=${hist.everApplied} everViewed=${hist.everViewed} everResponded=${hist.everResponded}`);
+}
+
+// A Rejected row is a response but not a view; one that was marked Viewed first still counts as viewed.
+const rej = computeFunnelWithHistory(new Map([[1, 'Rejected'], [2, 'Rejected'], [3, 'Viewed']]), [{ num: 2, from: 'Viewed', to: 'Rejected' }]);
+if (rej.everViewed === 2 && rej.everResponded === 2 && computeFunnel({ Rejected: 1, Viewed: 1 }).everViewed === 1) {
+  pass('a bare Rejected row is not counted as Viewed');
+} else {
+  fail(`rejected funnel: everViewed=${rej.everViewed} everResponded=${rej.everResponded}`);
 }

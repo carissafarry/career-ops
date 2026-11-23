@@ -36,7 +36,7 @@ try {
     '3\t2026-09-01\tInterview\tRejected',
   ].join('\n'));
   assert.deepEqual(stats.computeFunnelWithHistory(stats.trackerStatusByNum(skipTracker), skipLedger), {
-    everApplied: 1, everResponded: 1, everInterview: 1, everOffer: 0,
+    everApplied: 1, everViewed: 1, everResponded: 1, everInterview: 1, everOffer: 0, // reached Interview, so it was opened
     responseRate: 100, interviewRate: 100, offerRate: 0, smallSample: true, basis: 'ledger',
   });
   pass('canonicalized SKIP rows cannot recover prior interview or offer stages');

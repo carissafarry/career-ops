@@ -1,7 +1,9 @@
 // Pure cumulative-stage contract shared by CLI statistics and web views.
 // No filesystem access: the caller chooses the tracker and its sibling ledger.
 const RANKS = new Map([
-  ['APPLIED', 1], ['RESPONDED', 2], ['REJECTED', 2],
+  // Viewed sits between Applied and Responded: the employer opened it, no reply. Its half step keeps the
+  // integer thresholds the consumers use (>=1 applied, >=2 responded, >=4 interview, >=5 offer) unchanged.
+  ['APPLIED', 1], ['VIEWED', 1.5], ['RESPONDED', 2], ['REJECTED', 2],
   ['ASSESSMENT', 3], ['INTERVIEW', 4], ['OFFER', 5], ['HIRED', 6],
 ]);
 
@@ -55,4 +57,27 @@ export function recoverFunnelStages(statusByNum, ledger) {
     bump(num, to);
   }
   return reached;
+}
+
+/** Tracker rows an employer is known to have opened: marked Viewed now or in the ledger, or past Responded
+ * (Responded, Assessment, Interview, Offer, Hired). A bare Rejected is not proof: it can come without the
+ * application ever being opened, so it counts as a response but not as a view.
+ * Current SKIP rows stay outside, like recoverFunnelStages().
+ */
+export function recoverViewedStages(statusByNum, ledger) {
+  const proves = (status) => {
+    const token = String(status ?? '').trim().toUpperCase();
+    return token === 'VIEWED' || (token !== 'REJECTED' && funnelStageRank(token) >= 2);
+  };
+  const viewed = new Set();
+  const tracked = new Set();
+  for (const [num, status] of statusByNum) {
+    if (String(status ?? '').trim().toUpperCase() === 'SKIP') continue;
+    tracked.add(num);
+    if (proves(status)) viewed.add(num);
+  }
+  for (const { num, from, to } of ledger) {
+    if (tracked.has(num) && (proves(from) || proves(to))) viewed.add(num);
+  }
+  return viewed;
 }

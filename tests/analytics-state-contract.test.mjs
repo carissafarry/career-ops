@@ -12,12 +12,14 @@ const { computeProgressMetrics } = hasWeb ? await import('../web/src/lib/analyti
 
 const states = load(readFileSync(new URL('../templates/states.yml', import.meta.url), 'utf8')).states;
 const expected = {
-  EVALUATED: [1, 0, 0, 0, 0], SPECULATIVE: [1, 0, 0, 0, 0],
-  APPLIED: [1, 1, 0, 0, 0], VIEWED: [1, 1, 0, 0, 0], // opened by the employer, no reply: still waiting
-  RESPONDED: [1, 1, 1, 0, 0], ASSESSMENT: [1, 1, 1, 0, 0],
-  INTERVIEW: [1, 1, 1, 1, 0], OFFER: [1, 1, 1, 1, 1],
-  HIRED: [1, 1, 1, 1, 1], REJECTED: [1, 1, 1, 0, 0],
-  DISCARDED: [1, 0, 0, 0, 0], SKIP: [1, 0, 0, 0, 0],
+  // [tracked, applied, viewed, responded, interview, offer]
+  EVALUATED: [1, 0, 0, 0, 0, 0], SPECULATIVE: [1, 0, 0, 0, 0, 0],
+  APPLIED: [1, 1, 0, 0, 0, 0],
+  VIEWED: [1, 1, 1, 0, 0, 0], // opened by the employer, no reply: applied and viewed, not responded
+  RESPONDED: [1, 1, 1, 1, 0, 0], ASSESSMENT: [1, 1, 1, 1, 0, 0],
+  INTERVIEW: [1, 1, 1, 1, 1, 0], OFFER: [1, 1, 1, 1, 1, 1],
+  HIRED: [1, 1, 1, 1, 1, 1], REJECTED: [1, 1, 0, 1, 0, 0], // a rejection is a reply, not proof it was opened
+  DISCARDED: [1, 0, 0, 0, 0, 0], SKIP: [1, 0, 0, 0, 0, 0],
 };
 
 for (const state of states) {
