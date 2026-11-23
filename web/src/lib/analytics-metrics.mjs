@@ -28,7 +28,7 @@ function normalizedStatus(value) {
 
 // Same set as stats.mjs ACTIVE_STATUSES: applications in flight. Evaluated
 // rows were never sent and Hired is finished, so neither is active.
-const ACTIVE_STATUSES = new Set(["APPLIED", "RESPONDED", "ASSESSMENT", "INTERVIEW", "OFFER"]);
+const ACTIVE_STATUSES = new Set(["APPLIED", "VIEWED", "RESPONDED", "ASSESSMENT", "INTERVIEW", "OFFER"]);
 
 function sortByCountThenLabel(a, b) {
   return b.count - a.count || a.label.localeCompare(b.label);
@@ -65,7 +65,7 @@ export function computeProgressMetrics(applications = [], achievements) {
   // Go dashboard. SKIP is not an applied/active stage; do not silently change
   // this denominator into an eligible-to-apply subset.
   const tracked = apps.length;
-  const applied = achievements?.applied ?? count("APPLIED") + count("RESPONDED") + count("ASSESSMENT") + count("INTERVIEW") + count("OFFER") + count("HIRED") + count("REJECTED");
+  const applied = achievements?.applied ?? count("APPLIED") + count("VIEWED") + count("RESPONDED") + count("ASSESSMENT") + count("INTERVIEW") + count("OFFER") + count("HIRED") + count("REJECTED");
   const responded = achievements?.responded ?? count("RESPONDED") + count("ASSESSMENT") + count("INTERVIEW") + count("OFFER") + count("HIRED") + count("REJECTED");
   // Upstream's ledger-aware core helper recovers prior interview/offer stages
   // for applications that are now rejected or discarded.

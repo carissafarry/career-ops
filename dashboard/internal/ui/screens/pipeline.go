@@ -183,6 +183,7 @@ const (
 	filterEvaluated   = "evaluated"
 	filterSpeculative = "speculative"
 	filterApplied     = "applied"
+	filterViewed      = "viewed"
 	filterInterview   = "interview"
 	filterResponded   = "responded"
 	filterAssessment  = "assessment"
@@ -208,6 +209,7 @@ func getPipelineTabs() []pipelineTab {
 		{filterAssessment, i18n.Current.TabAssessment},
 		{filterResponded, i18n.Current.TabResponded},
 		{filterApplied, i18n.Current.TabApplied},
+		{filterViewed, i18n.Current.TabViewed},
 		{filterTop, i18n.Current.TabTop},
 		{filterSkip, i18n.Current.TabSkip},
 		{filterRejected, i18n.Current.TabRejected},
@@ -268,6 +270,7 @@ func getStatusPairs(currentNormalized string) []StatusPair {
 		{i18n.Current.StatusEvaluated, "Evaluated"},
 		{i18n.Current.StatusSpeculative, "Speculative"},
 		{i18n.Current.StatusApplied, "Applied"},
+		{i18n.Current.StatusViewed, "Viewed"},
 		{i18n.Current.StatusResponded, "Responded"},
 		{i18n.Current.StatusAssessment, "Assessment"},
 		{i18n.Current.StatusInterview, "Interview"},
@@ -318,7 +321,7 @@ func (m PipelineModel) currentStatusPairs() []StatusPair {
 // speculative sits just after evaluated: a gambit pitch is pre-application, so
 // it outranks nothing that has actually been sent, but it is live work and
 // belongs above skip/rejected/discarded.
-var statusGroupOrder = []string{"hired", "interview", "offer", "assessment", "responded", "applied", "evaluated", "speculative", "skip", "rejected", "discarded"}
+var statusGroupOrder = []string{"hired", "interview", "offer", "assessment", "responded", "viewed", "applied", "evaluated", "speculative", "skip", "rejected", "discarded"}
 
 // PipelineModel implements the career pipeline dashboard screen.
 type PipelineModel struct {
@@ -3016,6 +3019,7 @@ func (m PipelineModel) statusColorMap() map[string]lipgloss.Color {
 		"interview":   m.theme.Green,
 		"offer":       m.theme.Green,
 		"applied":     m.theme.Sky,
+		"viewed":      m.theme.Sky,
 		"responded":   m.theme.Blue,
 		"assessment":  m.theme.Mauve,
 		"evaluated":   m.theme.Text,

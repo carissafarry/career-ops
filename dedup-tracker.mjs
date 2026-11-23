@@ -65,6 +65,8 @@ const STATUS_RANK = {
   // has been submitted yet.
   'speculative': 2.5,
   'applied': 3,
+  // The employer opened the application: later than Applied, but not a reply.
+  'viewed': 3.5,
   'responded': 4,
   'assessment': 5,
   'interview': 6,

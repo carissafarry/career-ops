@@ -43,6 +43,12 @@ export const STATUS_ALIAS = {
   "已申请": "APPLIED",
   "已投遞": "APPLIED",
   "已申請": "APPLIED",
+  // Viewed — states.yml `viewed`
+  dilihat: "VIEWED",
+  "application viewed": "VIEWED",
+  application_viewed: "VIEWED",
+  "viewed by employer": "VIEWED",
+  seen: "VIEWED",
   // Responded — states.yml `responded`
   respondido: "RESPONDED",
   "yanıt verildi": "RESPONDED",

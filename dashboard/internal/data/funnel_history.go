@@ -14,7 +14,7 @@ import (
 
 func funnelRank(status string) int {
 	switch NormalizeStatus(status) {
-	case "applied":
+	case "applied", "viewed":
 		return 1
 	case "responded", "rejected":
 		return 2

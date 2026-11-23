@@ -13,7 +13,7 @@ const { computeProgressMetrics } = hasWeb ? await import('../web/src/lib/analyti
 const states = load(readFileSync(new URL('../templates/states.yml', import.meta.url), 'utf8')).states;
 const expected = {
   EVALUATED: [1, 0, 0, 0, 0], SPECULATIVE: [1, 0, 0, 0, 0],
-  APPLIED: [1, 1, 0, 0, 0],
+  APPLIED: [1, 1, 0, 0, 0], VIEWED: [1, 1, 0, 0, 0], // opened by the employer, no reply: still waiting
   RESPONDED: [1, 1, 1, 0, 0], ASSESSMENT: [1, 1, 1, 0, 0],
   INTERVIEW: [1, 1, 1, 1, 0], OFFER: [1, 1, 1, 1, 1],
   HIRED: [1, 1, 1, 1, 1], REJECTED: [1, 1, 1, 0, 0],
@@ -26,7 +26,7 @@ for (const state of states) {
     assert.ok(expected[key], `No contract case for ${key}`);
     const metrics = computeProgressMetrics([{ status: state.label }]);
     assert.deepEqual(metrics.funnel.map(stage => stage.count), expected[key]);
-    assert.equal(metrics.activeApps, ['APPLIED', 'RESPONDED', 'ASSESSMENT', 'INTERVIEW', 'OFFER'].includes(key) ? 1 : 0);
+    assert.equal(metrics.activeApps, ['APPLIED', 'VIEWED', 'RESPONDED', 'ASSESSMENT', 'INTERVIEW', 'OFFER'].includes(key) ? 1 : 0);
     assert.equal(metrics.totalOffers, ['OFFER', 'HIRED'].includes(key) ? 1 : 0);
   });
 }
@@ -39,6 +39,6 @@ test('Analytics and stats.mjs count the same active applications', { skip: !hasW
     ...labels.map((label, i) => `| ${i + 1} | 2026-10-01 | Acme ${i} | Engineer | 4.0/5 | ${label} | | | |`),
   ].join('\n');
   const web = computeProgressMetrics(labels.map(status => ({ status }))).activeApps;
-  assert.equal(computeTrackerStats(tracker).activeApps, 5);
-  assert.equal(web, 5);
+  assert.equal(computeTrackerStats(tracker).activeApps, 6);
+  assert.equal(web, 6);
 });

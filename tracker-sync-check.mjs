@@ -21,7 +21,7 @@
  *
  * Resolution (see compareLifecycle):
  *   Tier 1 (auto-resolve) — templates/states.yml's canonical states have a
- *   one-way lifecycle order: Evaluated -> Applied -> Responded -> Assessment -> Interview
+ *   one-way lifecycle order: Evaluated -> Applied -> Viewed -> Responded -> Assessment -> Interview
  *   -> {Offer | Rejected | Discarded | SKIP} (the last four are terminal, no
  *   further order among them, but any of them supersedes an earlier stage).
  *   If the two files disagree and one side is strictly later-stage, that's

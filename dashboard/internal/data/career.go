@@ -735,6 +735,8 @@ func NormalizeStatus(raw string) string {
 		return "offer"
 	case strings.Contains(s, "responded") || strings.Contains(s, "respondido") || strings.Contains(s, "yanıt verildi") || strings.Contains(s, "yanıt_verildi") || strings.Contains(s, "yanit verildi") || strings.Contains(s, "yanit_verildi") || s == "已回复" || s == "已回覆":
 		return "responded"
+	case s == "viewed" || s == "application viewed" || s == "application_viewed" || s == "viewed by employer" || s == "dilihat" || s == "seen":
+		return "viewed"
 	case strings.Contains(s, "applied") || strings.Contains(s, "aplicado") || s == "enviada" || s == "aplicada" || s == "sent" || strings.Contains(s, "başvuruldu") || strings.Contains(s, "basvuruldu") || s == "已投递" || s == "已申请" || s == "已投遞" || s == "已申請":
 		return "applied"
 	case strings.Contains(s, "rejected") || strings.Contains(s, "rechazado") || s == "rechazada" || strings.Contains(s, "reddedildi") || s == "已拒绝" || s == "被拒" || s == "已拒絕":
@@ -1185,7 +1187,7 @@ func IsCanonicalStatusName(status string) bool {
 // Reject malformed UI input cheaply; the writer validates against states.yml.
 func isCanonicalStatusName(status string) bool {
 	switch strings.ToLower(status) {
-	case "evaluated", "speculative", "applied", "responded", "assessment", "interview", "offer", "hired", "rejected", "discarded", "skip":
+	case "evaluated", "speculative", "applied", "viewed", "responded", "assessment", "interview", "offer", "hired", "rejected", "discarded", "skip":
 		return true
 	}
 	return false
@@ -1214,21 +1216,24 @@ func StatusPriority(status string) int {
 		return 2
 	case "responded":
 		return 3
-	case "applied":
+	// Between responded and applied, as in statusGroupOrder.
+	case "viewed":
 		return 4
-	case "evaluated":
+	case "applied":
 		return 5
+	case "evaluated":
+		return 6
 	// Right after evaluated, as in statusGroupOrder.
 	case "speculative":
-		return 6
-	case "skip":
 		return 7
-	case "rejected":
+	case "skip":
 		return 8
-	case "discarded":
+	case "rejected":
 		return 9
-	default:
+	case "discarded":
 		return 10
+	default:
+		return 11
 	}
 }
 
@@ -1254,7 +1259,7 @@ func ComputeProgressMetrics(apps []model.CareerApplication, history ...map[int]i
 		}
 
 		switch norm {
-		case "applied", "responded", "assessment", "interview", "offer":
+		case "applied", "viewed", "responded", "assessment", "interview", "offer":
 			pm.ActiveApps++
 		}
 	}
@@ -1271,7 +1276,7 @@ func ComputeProgressMetrics(apps []model.CareerApplication, history ...map[int]i
 	// canonical funnel definition, whose docstring already describes this exact
 	// math as mirroring this function.
 	total := len(apps)
-	applied := statusCounts["applied"] + statusCounts["responded"] + statusCounts["assessment"] + statusCounts["interview"] + statusCounts["offer"] + statusCounts["hired"] + statusCounts["rejected"]
+	applied := statusCounts["applied"] + statusCounts["viewed"] + statusCounts["responded"] + statusCounts["assessment"] + statusCounts["interview"] + statusCounts["offer"] + statusCounts["hired"] + statusCounts["rejected"]
 	responded := statusCounts["responded"] + statusCounts["assessment"] + statusCounts["interview"] + statusCounts["offer"] + statusCounts["hired"] + statusCounts["rejected"]
 	assessment := statusCounts["assessment"] + statusCounts["interview"] + statusCounts["offer"] + statusCounts["hired"]
 	interview := statusCounts["interview"] + statusCounts["offer"] + statusCounts["hired"]

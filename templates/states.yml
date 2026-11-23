@@ -32,6 +32,12 @@ states:
     description: Application submitted
     dashboard_group: applied
 
+  - id: viewed
+    label: Viewed
+    aliases: [dilihat, "application viewed", application_viewed, "viewed by employer", seen]
+    description: Employer opened the application, no reply yet
+    dashboard_group: viewed
+
   - id: responded
     label: Responded
     aliases: [respondido, "yanıt verildi", yanıt_verildi, "yanit verildi", yanit_verildi, 已回复, 已回覆]

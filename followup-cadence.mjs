@@ -159,7 +159,7 @@ function statusAliasMap() {
   return (aliasMapCache = map);
 }
 
-const ACTIONABLE_STATUSES = ['applied', 'responded', 'assessment', 'interview'];
+const ACTIONABLE_STATUSES = ['applied', 'viewed', 'responded', 'assessment', 'interview'];
 
 export function normalizeStatus(raw) {
   // foldStatusInput, not a bare toLowerCase: JS lowercases the Turkish dotted
@@ -824,7 +824,8 @@ export function resolveReportPath(reportField, appsFile = APPS_FILE, repoRoot = 
 // 3 days · Assessment uses the responded cadence · Interview: thank-you, then
 // every 3 days, no limit").
 export function computeUrgency(status, daysSinceApp, daysSinceLastFollowup, followupCount) {
-  if (status === 'applied') {
+  // Viewed is Applied with a signal: the employer opened it, no reply yet, so the Applied cadence still governs.
+  if (status === 'applied' || status === 'viewed') {
     if (followupCount >= CADENCE.applied_max_followups) return 'cold';
     if (followupCount === 0 && daysSinceApp >= CADENCE.applied_first) return 'overdue';
     if (followupCount > 0 && daysSinceLastFollowup !== null && daysSinceLastFollowup >= CADENCE.applied_subsequent) return 'overdue';
@@ -849,7 +850,8 @@ export function computeUrgency(status, daysSinceApp, daysSinceLastFollowup, foll
 
 // --- Compute next follow-up date ---
 export function computeNextFollowupDate(status, appDate, lastFollowupDate, followupCount) {
-  if (status === 'applied') {
+  // Viewed is Applied with a signal: the employer opened it, no reply yet, so the Applied cadence still governs.
+  if (status === 'applied' || status === 'viewed') {
     if (followupCount >= CADENCE.applied_max_followups) return null; // cold
     if (followupCount === 0) return addDays(parseDate(appDate), CADENCE.applied_first);
     if (lastFollowupDate) return addDays(parseDate(lastFollowupDate), CADENCE.applied_subsequent);

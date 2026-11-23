@@ -719,6 +719,7 @@ num\tdate\tcompany\trole\tstatus\tscore\tpdf\treport\tnotes\turl
 | `Evaluated` | Report completed, pending decision |
 | `Speculative` | Create-a-role gambit pitch in flight (no posting yet) |
 | `Applied` | Application sent |
+| `Viewed` | Employer opened the application, no reply yet |
 | `Responded` | Company responded |
 | `Assessment` | Online assessment or asynchronous screening |
 | `Interview` | In an actual interview process |

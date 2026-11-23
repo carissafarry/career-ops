@@ -21,6 +21,7 @@ type Catalog struct {
 	TabEvaluated   string
 	TabSpeculative string
 	TabApplied     string
+	TabViewed      string
 	TabInterview   string
 	TabResponded   string
 	TabAssessment  string
@@ -106,6 +107,7 @@ type Catalog struct {
 	StatusEvaluated   string
 	StatusSpeculative string
 	StatusApplied     string
+	StatusViewed      string
 	StatusResponded   string
 	StatusAssessment  string
 	StatusInterview   string
@@ -293,6 +295,8 @@ func (c *Catalog) StatusLabel(norm string) string {
 		return c.StatusOffer
 	case "hired":
 		return c.StatusHired
+	case "viewed":
+		return c.StatusViewed
 	case "responded":
 		return c.StatusResponded
 	case "assessment":
@@ -395,6 +399,7 @@ var En = Catalog{
 	TabEvaluated:   "EVALUATED",
 	TabSpeculative: "SPEC",
 	TabApplied:     "APPLIED",
+	TabViewed:      "VIEWED",
 	TabInterview:   "INTERVIEW",
 	TabResponded:   "RESPONDED",
 	TabAssessment:  "ASSESSMENT",
@@ -480,6 +485,7 @@ var En = Catalog{
 	StatusEvaluated:   "Evaluated",
 	StatusSpeculative: "Speculative",
 	StatusApplied:     "Applied",
+	StatusViewed:      "Viewed",
 	StatusResponded:   "Responded",
 	StatusAssessment:  "Assessment",
 	StatusInterview:   "Interview",

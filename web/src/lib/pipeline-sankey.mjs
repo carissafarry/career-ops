@@ -44,7 +44,7 @@ const ADVANCED = new Set(["INTERVIEW", "OFFER", "HIRED"]);
 // submission: the core counts it in neither `submitted` nor `decided`
 // (modes/patterns.md). A Discarded row stays under Submitted only when the
 // status log shows it reached one of these; otherwise it leaves from Tracked.
-const SUBMITTED_OR_LATER = new Set(["APPLIED", "RESPONDED", "ASSESSMENT", "INTERVIEW", "OFFER", "HIRED", "REJECTED"]);
+const SUBMITTED_OR_LATER = new Set(["APPLIED", "VIEWED", "RESPONDED", "ASSESSMENT", "INTERVIEW", "OFFER", "HIRED", "REJECTED"]);
 
 const LEAVES = [
   "skip",
@@ -149,7 +149,8 @@ export function classifyLeaf(app, log) {
   if (status === "EVALUATED") return "evaluated";
   // A create-a-role pitch: live, but nothing has been submitted to a posting.
   if (status === "SPECULATIVE") return "speculative";
-  if (status === "APPLIED") return "waiting";
+  // Viewed: the employer opened it but has not replied, so it still waits.
+  if (status === "APPLIED" || status === "VIEWED") return "waiting";
   if (status === "RESPONDED") return "screening";
   if (status === "ASSESSMENT") return "assessment";
   if (status === "INTERVIEW") return "interview";

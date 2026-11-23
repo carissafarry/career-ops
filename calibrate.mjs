@@ -168,7 +168,7 @@ export function computeCalibration(rows, journals, opts = {}) {
       const s = String(row.status || '').replace(/\*\*/g, '').trim().toLowerCase().replace(/\s+\d{4}-\d{2}-\d{2}.*$/, '');
       if (closedNoResponse.get(row.num) === s) verdict = { source: 'ledger', type: 'no_response', ...JOURNAL_OUTCOMES.no_response };
       else if (TRACKER_TERMINAL[s]) verdict = { source: 'tracker', type: s, ...TRACKER_TERMINAL[s] };
-      else if (['applied', 'responded'].includes(s)) { inFlight.push(row.num); continue; }
+      else if (['applied', 'viewed', 'responded'].includes(s)) { inFlight.push(row.num); continue; }
       else continue; // evaluated / discarded / skip with no stage history — outside calibration's population
     }
     if (!Number.isFinite(row.score) || row.score <= 0) { unscored.push(row.num); continue; }
