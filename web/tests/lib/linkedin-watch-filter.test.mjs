@@ -17,7 +17,7 @@ test("filters are compiled with the scanner's own title and location builders", 
   };
   const keep = await buildCardFilter({ ...NONE, positive: ["Backend"], allow: ["Indonesia"], blockHard: ["India"], alwaysAllow: ["Remote"] }, async () => core);
   assert.deepEqual(calls[0], ["title", { positive: ["Backend"], negative: [] }]);
-  assert.deepEqual(calls[1], ["location", { allow: ["Indonesia"], block: [], block_hard: ["India"], always_allow: ["Remote"] }]);
+  assert.deepEqual(calls[1], ["location", { allow: ["Indonesia"], block: [], block_hard: ["India"], always_allow: ["Remote"], remote_title_fallback: false }]);
   assert.equal(keep({ title: "Backend Engineer", location: "Jakarta, Indonesia", link: "" }), true);
   assert.equal(keep({ title: "Chef", location: "Jakarta, Indonesia", link: "" }), false);
   assert.equal(keep({ title: "Backend Engineer", location: "Austin, USA", link: "" }), false);

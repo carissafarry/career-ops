@@ -21,7 +21,9 @@ export async function buildCardFilter(filters, loadCore) {
     ? core.buildTitleFilter({ positive: filters.positive, negative: filters.negative })
     : null;
   const locationOk = LOCATION_KEYS.some((k) => filters[k].length > 0)
-    ? core.buildLocationFilter({ allow: filters.allow, block: filters.block, block_hard: filters.blockHard, always_allow: filters.alwaysAllow })
+    // remote_title_fallback is off: a "(Remote)" in the title would otherwise rescue a card whose place is
+    // outside the allow list, and a saved Indonesia search lets LinkedIn's remote Europe results through.
+    ? core.buildLocationFilter({ allow: filters.allow, block: filters.block, block_hard: filters.blockHard, always_allow: filters.alwaysAllow, remote_title_fallback: false })
     : null;
   return (card) => {
     if (titleOk && !titleOk(card.title)) return false;
