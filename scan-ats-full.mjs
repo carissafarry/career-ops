@@ -80,6 +80,7 @@ import { loadWorkableFeed, WORKABLE_FEED_URL } from './providers/workable.mjs';
 import { openProviderIdCache, PROVIDER_ID_CACHE_DIR } from './provider-id-cache.mjs';
 import { decodeEntities } from './providers/_html-entities.mjs';
 import { buildTitleFilter, buildTitleFilterOverrides, buildTitleFilterWithOverrides, buildLocationFilter, buildContentFilterOrExit, matchedTitleKeywords, loadSeenUrls, scanHistoryPolicy, seenJobKey, appendToPipeline, appendToScanHistory, findBlacklistEntry, loadBlacklist, parseSinceDays, BROWSER_PROCESS_ENV, DATA_ROOT as SCAN_DATA_ROOT, PORTALS_PATH, PIPELINE_PATH, SCAN_HISTORY_PATH, loadCandidateYears } from './scan.mjs';
+import { detectVisaSignal, visaFilterText } from './scan.mjs';
 import { resolveExperienceFilter, applyExperienceFilter } from './jd-years.mjs';
 import { localToday } from './lib/local-today.mjs';
 import { printScanSummaryHeader } from './lib/scan-summary-marker.mjs';
@@ -1358,7 +1359,8 @@ export function emitLiveOffer(job, source, { json } = {}) {
 }
 
 export function keepAndMaybeEmit(job, source, sink, blacklist, opts) {
-  const kept = { ...job, ...(opts.workplacePolicy ? { geographyEvidence: captureWorkplaceEvidence(job) } : {}), source, dateStatus: job.postedAt ? 'dated' : 'unknown' };
+  const visa = detectVisaSignal(visaFilterText(job));
+  const kept = { ...job, ...(visa ? { visa } : {}), ...(opts.workplacePolicy ? { geographyEvidence: captureWorkplaceEvidence(job) } : {}), source, dateStatus: job.postedAt ? 'dated' : 'unknown' };
   sink.push(kept);
   const live = filterBlacklistedOffers([kept], blacklist, { includeBlacklisted: opts.includeBlacklisted });
   if (live.offers.length) emitLiveOffer(live.offers[0], source, { json: opts.json });

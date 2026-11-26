@@ -152,7 +152,7 @@ export function isSafePublicHttpUrl(raw) {
  */
 export function extractLabels(body) {
   const labels = {};
-  const labelRe = /\|\s*(posted|trust|yrs|note|rank):\s*([^|]+)/g;
+  const labelRe = /\|\s*(posted|trust|yrs|visa|note|rank):\s*([^|]+)/g;
   let m;
   while ((m = labelRe.exec(body)) !== null) {
     labels[m[1]] = m[2].trim();

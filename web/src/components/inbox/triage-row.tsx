@@ -87,6 +87,7 @@ export function TriageRow({
         </p>
         <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-faint">
           {job.location && <span className="truncate">{job.location}</span>}
+          {job.visa && <VisaBadge visa={job.visa} />}
           {source && <span className="rounded bg-surface-hover px-1 py-px font-medium text-muted">{PLATFORM_LABEL[source]}</span>}
           <AgeLabel postedDate={job.postedAt} exact={job.postedAtExact} />
           {reason ? <span className="text-muted">{reason}</span> : null}
@@ -159,5 +160,25 @@ export function TriageRow({
         </div>
       )}
     </li>
+  );
+}
+
+const VISA_LABEL: Record<string, string> = {
+  sponsored: "Visa sponsored",
+  relocation: "Relocation support",
+  "sponsored+relocation": "Visa + relocation",
+  "no-sponsorship": "No sponsorship",
+  "relocation+no-sponsorship": "Relocation, no sponsorship",
+};
+
+// What the posting itself says. Green when the employer offers help, red when it refuses a visa.
+function VisaBadge({ visa }: { visa: string }) {
+  const refuses = visa.includes("no-sponsorship");
+  return (
+    <span
+      className={`rounded px-1 py-px font-medium ${refuses ? "bg-red-500/10 text-red-700 dark:text-red-400" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"}`}
+    >
+      {VISA_LABEL[visa] ?? visa}
+    </span>
   );
 }

@@ -28,7 +28,7 @@ export function splitLines(text) {
   return text.split(/\r?\n/);
 }
 
-const LABELED_SEGMENT = /^(posted|trust|yrs|note|rank):\s(.*)$/i;
+const LABELED_SEGMENT = /^(posted|trust|yrs|visa|note|rank):\s(.*)$/i;
 
 /** What a row points at: a posting URL, or a job description saved on disk
  *  (`local:jds/…`, the row modes/scan.md writes for a pasted posting). */
@@ -77,6 +77,8 @@ export function parseInbox(md) {
       // Absent unless the row carries a rank label. A present-but-undefined
       // key fails deep equality on rows that were never ranked.
       ...(rankStamp ? { rankStamp } : {}),
+      // Same for the visa/relocation marker (scan.mjs `visa:` label).
+      ...(labels.get("visa") ? { visa: labels.get("visa") } : {}),
     });
   }
   return jobs;

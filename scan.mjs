@@ -1431,6 +1431,50 @@ export function buildVisaFilter(visaFilter) {
   };
 }
 
+// ── Visa / relocation marker ────────────────────────────────────────
+// Unlike visa_filter this never drops a posting: it only labels what the text
+// says, so a remote role that never mentions visas still passes. Returns
+// 'sponsored', 'relocation', 'sponsored+relocation', 'no-sponsorship',
+// 'relocation+no-sponsorship', or '' when the text says nothing. Written to the
+// pipeline row as `visa: …`.
+//
+// Relocation wording is offer phrases only: bare "relocation" or "willing to
+// relocate" is a requirement on the candidate, not support from the employer.
+export const RELOCATION_OFFER_PHRASES = [
+  'relocation assistance',
+  'relocation support',
+  'relocation package',
+  'relocation bonus',
+  'relocation allowance',
+  'relocation benefit',
+  'relocation provided',
+  'relocation budget',
+  'relocation expenses',
+  'relocation help',
+  'relocation stipend',
+  'help with relocation',
+  'support with relocation',
+  'assistance with relocation',
+  'relocation and visa',
+  'visa and relocation',
+  'we will relocate',
+  'we can relocate',
+  'relocate you',
+];
+
+export function detectVisaSignal(text) {
+  if (typeof text !== 'string' || text.trim() === '') return '';
+  const lower = text.toLowerCase();
+  const refused = DEFAULT_VISA_NEGATIVE.some(k => lower.includes(k));
+  const sponsored = !refused && DEFAULT_VISA_POSITIVE.some(k => lower.includes(k));
+  const relocation = RELOCATION_OFFER_PHRASES.some(k => lower.includes(k));
+  const parts = [];
+  if (sponsored) parts.push('sponsored');
+  if (relocation) parts.push('relocation');
+  if (refused) parts.push('no-sponsorship');
+  return parts.join('+');
+}
+
 // ── Employment-type filter ──────────────────────────────────────────
 // Optional. If `employment_type_filter` is absent from portals.yml, all jobs
 // pass, byte-identical to before the filter existed.
@@ -2341,7 +2385,7 @@ const PIPELINE_CHECKBOX_STRICT_RE = /^- \[[ x]\]\s+/;
  * segment invents a city for a role and lets it resurface, while a genuine
  * location beginning `Posted: ` / `Rank: ` does not occur.
  */
-const PIPELINE_LABELED_SEGMENT_RE = /^(?:posted|trust|yrs|note|rank):\s/iu;
+const PIPELINE_LABELED_SEGMENT_RE = /^(?:posted|trust|yrs|visa|note|rank):\s/iu;
 
 /**
  * The `~~…~~` wrapper an expired entry is written with.
@@ -3686,6 +3730,10 @@ export function formatPipelineOffer(offer) {
   // is off, so such a row stays byte-identical. After trust:, before note:.
   const yrs = typeof offer.years?.label === 'string' ? sanitizeMarkdownField(offer.years.label) : '';
   if (yrs) line = `${line} | yrs: ${yrs}`;
+  // Labeled visa/relocation marker (detectVisaSignal). Absent when the posting
+  // says nothing, so such a row stays byte-identical. After yrs:, before note:.
+  const visa = typeof offer.visa === 'string' ? sanitizeMarkdownField(offer.visa) : '';
+  if (visa) line = `${line} | visa: ${visa}`;
   // Optional free-text ranking signal (e.g. a curated-list flag an importer
   // attaches). Labeled — not positional like location/compensation — so it can
   // ride on any row shape (bare URL, 3-, 4-, or 5-column) without a reader
@@ -5755,8 +5803,10 @@ async function main() {
         // rediscovery fallback. A null domain (no careers_url) marks the offer
         // as broad-discovery — ineligible for the fallback, per the issue scope.
         const careersUrlDomain = extractCareersUrlDomain(company.careers_url);
+        const visaSignal = detectVisaSignal(visaFilterText(job));
         const offerForVerification = {
           ...job,
+          ...(visaSignal ? { visa: visaSignal } : {}),
           source: sourceName,
           tracked: Boolean(careersUrlDomain),
           careersUrlDomain,

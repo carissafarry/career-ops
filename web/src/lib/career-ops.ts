@@ -111,7 +111,7 @@ function read(rel: string): string | null {
 }
 
 export type InboxFit = { score: number; reason: string };
-export type InboxJob = { url: string; company: string; role: string; location?: string; /** Lowercase search text for the location box: the place, its country and its spellings. Set on the server. */ locationKeys?: string; /** When LinkedIn says the job was posted (ISO, an estimate), kept for jobs added from the LinkedIn watcher. */ postedAtExact?: string; compensation?: string; done: boolean; postedAt?: string; rankStamp?: string; fit?: InboxFit | null };
+export type InboxJob = { url: string; company: string; role: string; location?: string; /** Lowercase search text for the location box: the place, its country and its spellings. Set on the server. */ locationKeys?: string; /** When LinkedIn says the job was posted (ISO, an estimate), kept for jobs added from the LinkedIn watcher. */ postedAtExact?: string; compensation?: string; done: boolean; postedAt?: string; rankStamp?: string; /** What the posting says about a work visa or relocation (scan.mjs `visa:` label), e.g. `sponsored+relocation`. */ visa?: string; fit?: InboxFit | null };
 
 /** Parse data/pipeline.md. The row grammar and its labeled-segment handling
  *  live in pipeline-table.mjs — see there for the column rules (#1015, #1017). */
