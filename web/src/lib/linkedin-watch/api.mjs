@@ -245,15 +245,15 @@ export async function addPostings(paths, ids, addOffers) {
 
 export const addPosting = (paths, id, addOffers) => addPostings(paths, [id], addOffers);
 
-/** Marks postings as applied: each becomes an `Applied` tracker row (trackerAdd does the merge). */
-export async function markApplied(paths, ids, trackerAdd) {
+/** Marks postings as applied: each becomes an `Applied` tracker row (trackerAdd does the merge). `note` goes on every row. */
+export async function markApplied(paths, ids, trackerAdd, note = "") {
   const wanted = new Set(idList(ids));
   const found = readState(paths).postings.filter((p) => wanted.has(p.id));
   if (found.length === 0) return { status: 404, body: { error: "Posting not found." } };
   const done = [];
   const failed = [];
   for (const p of found.filter((x) => !x.applied)) {
-    const r = await trackerAdd(p);
+    const r = await trackerAdd(p, note);
     if (r.ok) done.push(p.id);
     else failed.push({ id: p.id, title: p.title, error: r.error ?? "failed" });
   }

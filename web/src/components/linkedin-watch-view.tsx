@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { LinkedInIcon } from "@/components/icons/linkedin-icon";
 import { Bell, ChevronDown, CircleCheck, Info, ListPlus, Loader2, OctagonAlert, Trash2, TriangleAlert } from "lucide-react";
 import { pageFrameWidthClass } from "@/components/page-frame";
+import { ApplyNoteDialog } from "@/components/inbox/apply-note-dialog";
 import { RegionTemplates } from "@/components/country-templates";
 import { byPostedNewest, postedAgeNow } from "@/lib/linkedin-watch/posted-age.mjs";
 
@@ -120,6 +121,7 @@ export function LinkedInWatchView() {
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [applyIds, setApplyIds] = useState<string[] | null>(null); // postings waiting in the note dialog
   const [url, setUrl] = useState("");
   const [interval, setIntervalMin] = useState("10");
   const [hours, setHours] = useState("");
@@ -262,14 +264,13 @@ export function LinkedInWatchView() {
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(postings.map((p) => p.id)));
 
   // pipeline: the inbox (data/pipeline.md). applied: an "Applied" row in the tracker. delete: off this list only.
-  async function act(kind: "pipeline" | "applied" | "delete", ids: string[]) {
+  async function act(kind: "pipeline" | "applied" | "delete", ids: string[], note = "") {
     if (ids.length === 0) return;
-    if (kind === "applied" && !window.confirm(`Mark ${ids.length === 1 ? "this job" : `${ids.length} jobs`} as applied and add ${ids.length === 1 ? "it" : "them"} to your tracker?`)) return;
     if (kind === "delete" && ids.length > 1 && !window.confirm(`Delete ${ids.length} postings from this list?`)) return;
     setBusy(true);
     setError(null);
     try {
-      const [path, body] = kind === "pipeline" ? ["/api/linkedin-watch/add", { ids }] : kind === "applied" ? ["/api/linkedin-watch/applied", { ids }] : ["/api/linkedin-watch", { action: "remove", ids }];
+      const [path, body] = kind === "pipeline" ? ["/api/linkedin-watch/add", { ids }] : kind === "applied" ? ["/api/linkedin-watch/applied", { ids, note }] : ["/api/linkedin-watch", { action: "remove", ids }];
       const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const json = await res.json();
       if (!res.ok) setError(json.error ?? json.failed?.[0]?.error ?? "Something went wrong.");
@@ -277,6 +278,7 @@ export function LinkedInWatchView() {
       setSelected((prev) => { const next = new Set(prev); ids.forEach((id) => next.delete(id)); return next; });
     } finally {
       setBusy(false);
+      setApplyIds(null);
       await load();
     }
   }
@@ -617,7 +619,7 @@ export function LinkedInWatchView() {
               </select>
             </label>
             <button disabled={busy || selected.size === 0} onClick={() => act("pipeline", [...selected])} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-sm text-foreground disabled:opacity-50"><ListPlus className="size-3.5" /> Add to pipeline</button>
-            <button disabled={busy || selected.size === 0} onClick={() => act("applied", [...selected])} className="inline-flex items-center gap-1 rounded-full bg-brand px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"><CircleCheck className="size-3.5" /> Mark applied</button>
+            <button disabled={busy || selected.size === 0} onClick={() => setApplyIds([...selected])} className="inline-flex items-center gap-1 rounded-full bg-brand px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"><CircleCheck className="size-3.5" /> Mark applied</button>
             <button disabled={busy || selected.size === 0} onClick={() => act("delete", [...selected])} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-sm text-foreground disabled:opacity-50"><Trash2 className="size-3.5" /> Delete</button>
           </div>
         )}
@@ -647,7 +649,7 @@ export function LinkedInWatchView() {
                   <button disabled={busy} onClick={() => act("pipeline", [p.id])} className="inline-flex items-center gap-1 rounded-full border border-border px-3 py-1.5 text-sm text-foreground disabled:opacity-50"><ListPlus className="size-3.5" /> Pipeline</button>
                 )}
                 {!p.applied && (
-                  <button disabled={busy} onClick={() => act("applied", [p.id])} className="inline-flex items-center gap-1 rounded-full bg-brand px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"><CircleCheck className="size-3.5" /> Applied</button>
+                  <button disabled={busy} onClick={() => setApplyIds([p.id])} className="inline-flex items-center gap-1 rounded-full bg-brand px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"><CircleCheck className="size-3.5" /> Applied</button>
                 )}
                 <button disabled={busy} onClick={() => act("delete", [p.id])} aria-label={`Delete ${p.title}`} title="Delete from this list" className="inline-flex items-center rounded-full border border-border p-2 text-muted hover:text-foreground disabled:opacity-50"><Trash2 className="size-4" /></button>
               </div>
@@ -655,6 +657,16 @@ export function LinkedInWatchView() {
           ))}
         </ul>
       </section>
+
+      {applyIds && (
+        <ApplyNoteDialog
+          what={applyIds.length === 1 ? (() => { const p = rawPostings.find((x) => x.id === applyIds[0]); return p ? `${p.company} · ${p.title}` : "This job"; })() : `${applyIds.length} jobs`}
+          count={applyIds.length}
+          busy={busy}
+          onConfirm={(note) => void act("applied", applyIds, note)}
+          onCancel={() => setApplyIds(null)}
+        />
+      )}
     </div>
   );
 }

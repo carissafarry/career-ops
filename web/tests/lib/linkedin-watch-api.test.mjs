@@ -210,6 +210,10 @@ test("mark applied adds a tracker row per posting, keeps failures apart, and is 
   assert.deepEqual(calls, ["1", "2"]); // posting 1 is not sent to the tracker twice
   assert.equal((await markApplied(p, ["2"], async () => ({ ok: false, error: "x" }))).status, 500);
   assert.equal((await markApplied(p, ["nope"], trackerAdd)).status, 404);
+  const notes = [];
+  seedPostings(p, ["1", "2", "3"]);
+  await markApplied(p, ["3"], async (posting, note) => { notes.push([posting.id, note]); return { ok: true }; }, "applied as 1,5 - 5 yoe");
+  assert.deepEqual(notes, [["3", "applied as 1,5 - 5 yoe"]]); // the note reaches the tracker row
 });
 
 function patchState(p, id, patch) {
