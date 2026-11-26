@@ -4,7 +4,7 @@ import { memo, startTransition, useCallback, useDeferredValue, useEffect, useLay
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FilterSync } from "@/components/filter-sync";
-import { Search, ChevronsUpDown, X, Compass, ArrowRight, ExternalLink, Download, FileText } from "lucide-react";
+import { Search, ChevronsUpDown, X, Compass, ArrowRight, Download, FileText } from "lucide-react";
 import type { Application, InboxJob } from "@/lib/career-ops";
 import { Badge } from "@/components/ui/badge";
 import { CompanyLogo } from "@/components/company-logo";
@@ -24,7 +24,7 @@ import { PIPELINE_TABS, pipelineQuery, pipelineTab, pipelineTabCounts, rowOnPipe
 import { isClientOnlyWrite, isSearchOnlyWrite, queryWithLiveSearch } from "@/lib/list-search-sync.mjs";
 import { useListSearch } from "@/lib/use-list-search";
 import { COMPARE_MAX } from "@/lib/pipeline-compare.mjs";
-import { postingHref, postingLabel } from "@/lib/posting-url.mjs";
+import { postingHref } from "@/lib/posting-url.mjs";
 import { trackerCsv, trackerCsvFilename } from "@/lib/tracker-csv.mjs";
 import { clampTrackerWindow, initialTrackerWindow, TRACKER_OVERSCAN, TRACKER_ROW_PX, trackerWindow } from "@/lib/tracker-window.mjs";
 import { clearHeldSaves, excludeInFlightStatusRows, offscreenStatusFailures, reduceHeldSave } from "@/lib/status-save-hold.mjs";
@@ -1345,22 +1345,14 @@ const TrackerRow = memo(function TrackerRow({
       </td>
       <td className="min-w-0 px-4 py-3 text-muted min-[1440px]:overflow-hidden">
         <div className="flex min-w-0 items-center gap-2">
-          <Link href={detailHref} tabIndex={-1} onPointerDown={arm} onClick={open} className="block max-w-72 truncate min-[1440px]:min-w-[8rem] min-[1440px]:flex-1 min-[1440px]:max-w-none" title={r.role}>{r.role}</Link>
+          {posting ? (
+            <a href={posting} target="_blank" rel="noreferrer" className="block max-w-72 truncate transition-colors hover:text-brand-text hover:underline min-[1440px]:min-w-[8rem] min-[1440px]:flex-1 min-[1440px]:max-w-none" title={`${r.role} (${posting})`}>{r.role}</a>
+          ) : (
+            <Link href={detailHref} tabIndex={-1} onPointerDown={arm} onClick={open} className="block max-w-72 truncate min-[1440px]:min-w-[8rem] min-[1440px]:flex-1 min-[1440px]:max-w-none" title={r.role}>{r.role}</Link>
+          )}
           {r.closesAt ? (
             <span className="whitespace-nowrap text-faint tabular-nums">Closes {r.closesAt}</span>
           ) : null}
-          {posting && (
-            <a
-              href={posting}
-              target="_blank"
-              rel="noreferrer"
-              title={posting}
-              className="inline-flex max-[1439px]:shrink-0 items-center gap-1 text-xs text-brand-text hover:underline min-[1440px]:max-w-[40%] min-[1440px]:min-w-0 min-[1440px]:overflow-hidden"
-            >
-              <span className="min-[1440px]:min-w-0 min-[1440px]:truncate">{postingLabel(posting)}</span>
-              <ExternalLink className="size-3 shrink-0" />
-            </a>
-          )}
         </div>
       </td>
       <td className="px-4 py-3">
