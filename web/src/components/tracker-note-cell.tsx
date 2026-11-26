@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Pencil } from "lucide-react";
-import { cleanNote, tidyNote } from "@/lib/tracker-note.mjs";
+import { cleanNote, noteToText, tidyNote } from "@/lib/tracker-note.mjs";
 
 // The Notes cell of a tracker row: shows the note (cut to one line) and opens a small editor on click. Saving goes
 // through /api/tracker/note, which edits only that cell under the tracker lock. The editor is a popover drawn on top
@@ -12,7 +12,9 @@ import { cleanNote, tidyNote } from "@/lib/tracker-note.mjs";
 export function TrackerNoteCell({ n, status, note }: { n: number | string; status: string; note: string }) {
   const router = useRouter();
   const [stored, setStored] = useState(note); // exactly as the tracker holds it: the edit replaces this text
-  const shown = tidyNote(stored); // what is displayed
+  const shown = tidyNote(stored); // the note as stored: line breaks are <br>
+  const shownText = noteToText(shown); // the same with real line breaks (editor, tooltip)
+  const shownLine = shownText.replace(/\n/g, " · "); // the table cell is one line
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(note);
   const [busy, setBusy] = useState(false);
@@ -31,7 +33,7 @@ export function TrackerNoteCell({ n, status, note }: { n: number | string; statu
     if (!r) return;
     const width = 340;
     setAt({ top: Math.min(r.bottom + 6, window.innerHeight - 230), left: Math.max(8, Math.min(r.left, window.innerWidth - width - 28)) });
-    setDraft(shown);
+    setDraft(shownText);
     setError("");
     setOpen(true);
   }
@@ -67,11 +69,11 @@ export function TrackerNoteCell({ n, status, note }: { n: number | string; statu
         ref={button}
         type="button"
         onClick={openEditor}
-        title={shown ? `${shown}\n\nClick to edit` : "Add a note"}
+        title={shown ? `${shownText}\n\nClick to edit` : "Add a note"}
         aria-label={shown ? `Edit the note of application ${n}` : `Add a note to application ${n}`}
         className="group/note flex w-full min-w-0 max-w-64 items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm hover:bg-surface-hover"
       >
-        {shown ? <span className="truncate text-muted">{shown}</span> : <span className="text-faint">Add note</span>}
+        {shown ? <span className="truncate text-muted">{shownLine}</span> : <span className="text-faint">Add note</span>}
         <Pencil className="size-3 shrink-0 text-faint opacity-0 transition-opacity group-hover/note:opacity-100 group-focus-visible/note:opacity-100" aria-hidden="true" />
       </button>
       {open && at && typeof document !== "undefined" && createPortal(
@@ -99,7 +101,7 @@ export function TrackerNoteCell({ n, status, note }: { n: number | string; statu
             {error && <p role="alert" className="mt-1.5 text-xs text-red-700 dark:text-red-300">{error}</p>}
             <div className="mt-2 flex items-center justify-end gap-2">
               <button type="button" disabled={busy} onClick={close} className="rounded-full border border-border px-3 py-1.5 text-sm text-foreground disabled:opacity-50">Cancel</button>
-              <button type="button" disabled={busy || draft.trim() === shown.trim() || draft.trim() === ""} onClick={() => void save()} className="rounded-full bg-brand px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
+              <button type="button" disabled={busy || cleanNote(draft) === cleanNote(shown) || cleanNote(draft) === ""} onClick={() => void save()} className="rounded-full bg-brand px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50">
                 {busy ? "Saving…" : "Save"}
               </button>
             </div>

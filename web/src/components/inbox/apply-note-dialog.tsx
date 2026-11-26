@@ -44,7 +44,7 @@ export function ApplyNoteDialog({
           {what} will be added to your tracker as <span className="font-medium text-foreground">Applied</span>.
         </p>
         <label className="mt-4 block text-xs text-muted">
-          Note <span className="text-faint">· optional{count > 1 ? `, the same note goes on all ${count} rows` : ""}. Ctrl or Cmd + Enter confirms.</span>
+          Note <span className="text-faint">· optional{count > 1 ? `, the same note goes on all ${count} rows` : ""}. Enter adds a new line, Ctrl or Cmd + Enter confirms.</span>
           <textarea
             ref={area}
             value={note}

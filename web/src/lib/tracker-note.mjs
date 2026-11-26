@@ -4,9 +4,26 @@
 
 export const MAX_NOTE = 500;
 
-/** One line, no pipe (it would break the markdown row), cut at MAX_NOTE. */
-export const cleanNote = (text) =>
-  String(text ?? "").replace(/\|/g, "/").replace(/\s+/g, " ").trim().slice(0, MAX_NOTE);
+const BREAK_TAG = /<br\s*\/?>/gi;
+
+/**
+ * One table cell: a pipe would break the markdown row, so it becomes a slash. A line break cannot live in a
+ * table row either, so each one is stored as `<br>` (the markdown table convention) and read back as a line break
+ * by `noteToText`. Spaces inside a line are collapsed, empty lines are dropped, the text is cut at MAX_NOTE.
+ * Idempotent: a stored `<br>` comes back as the same `<br>`.
+ */
+export const cleanNote = (text) => {
+  const lines = String(text ?? "")
+    .replace(/\|/g, "/")
+    .replace(BREAK_TAG, "\n")
+    .split(/\r\n|\r|\n/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  return lines.join("\n").slice(0, MAX_NOTE).split("\n").join("<br>");
+};
+
+/** A stored note as plain text with real line breaks, for the editor and tooltips. */
+export const noteToText = (stored) => String(stored ?? "").replace(BREAK_TAG, "\n");
 
 /**
  * @param {{row: unknown, status: unknown, previous?: string, note: string}} input `previous` is the note the editor
